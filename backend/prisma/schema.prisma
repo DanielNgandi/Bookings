@@ -1,0 +1,125 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL") // stored in .env
+}
+
+
+model User {
+  id        Int      @id @default(autoincrement())
+  name      String
+  email     String   @unique
+  password  String
+  createdAt DateTime @default(now())
+
+  clients  Client[]
+  hotels   Hotel[]
+  bookings Booking[]
+}
+
+model Client {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  name      String
+  company   String?
+  email     String?
+  phone     String?
+  country   String?
+  createdAt DateTime @default(now())
+
+  user     User    @relation(fields: [userId], references: [id])
+  bookings Booking[]
+}
+
+model Hotel {
+  id          Int      @id @default(autoincrement())
+  userId      Int
+  name        String
+  location    String?
+  email       String?
+  phone       String?
+  mpesaNumber String?
+  bankDetails String?
+  createdAt   DateTime @default(now())
+
+  user     User     @relation(fields: [userId], references: [id])
+  bookings Booking[]
+}
+
+model Booking {
+  id          Int      @id @default(autoincrement())
+  userId      Int
+  clientId    Int
+  hotelId     Int
+  checkIn     DateTime
+  checkOut    DateTime
+  rooms       String
+  totalAmount Float
+  status      BookingStatus @default(PENDING)
+  createdAt   DateTime @default(now())
+
+  user    User    @relation(fields: [userId], references: [id])
+  client  Client  @relation(fields: [clientId], references: [id])
+  hotel   Hotel   @relation(fields: [hotelId], references: [id])
+
+  payment Payment?
+  invoice Invoice?
+  voucher Voucher?
+  receipt Receipt?
+}
+
+model Payment {
+  id            Int      @id @default(autoincrement())
+  bookingId     Int      @unique
+  amount        Float
+  method        PaymentMethod
+  transactionId String?
+  paymentDate   DateTime @default(now())
+
+  booking Booking @relation(fields: [bookingId], references: [id])
+}
+
+model Invoice {
+  id            Int      @id @default(autoincrement())
+  bookingId     Int      @unique
+  invoiceNumber String   @unique
+  pdfPath       String?
+  createdAt     DateTime @default(now())
+
+  booking Booking @relation(fields: [bookingId], references: [id])
+}
+
+model Voucher {
+  id            Int      @id @default(autoincrement())
+  bookingId     Int      @unique
+  voucherNumber String   @unique
+  pdfPath       String?
+  createdAt     DateTime @default(now())
+
+  booking Booking @relation(fields: [bookingId], references: [id])
+}
+
+model Receipt {
+  id            Int      @id @default(autoincrement())
+  bookingId     Int      @unique
+  receiptNumber String   @unique
+  pdfPath       String?
+  createdAt     DateTime @default(now())
+
+  booking Booking @relation(fields: [bookingId], references: [id])
+}
+
+enum BookingStatus {
+  PENDING
+  PAID
+  CANCELLED
+}
+
+enum PaymentMethod {
+  MPESA
+  BANK
+  CASH
+}
