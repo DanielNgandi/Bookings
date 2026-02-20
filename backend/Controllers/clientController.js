@@ -31,3 +31,16 @@ export const addClient = async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 };
+export const getClients = async (req, res) => {
+  try {
+    const clients = await prisma.client.findMany({
+      where: { userId: req.user.id },
+      orderBy: { createdAt: "desc" }
+    });
+
+    res.json(clients);
+  } catch (error) {
+    res.status(500).json({ message: "Server error" });
+  }
+};
+

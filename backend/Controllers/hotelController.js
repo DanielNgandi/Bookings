@@ -32,3 +32,16 @@ export const addHotel = async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 };
+
+export const getHotels = async (req, res) => {
+  try {
+    const hotels = await prisma.hotel.findMany({
+      where: { userId: req.user.id },
+      orderBy: { createdAt: "desc" }
+    });
+
+    res.json(hotels);
+  } catch (error) {
+    res.status(500).json({ message: "Server error" });
+  }
+};

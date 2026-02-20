@@ -1,201 +1,252 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect} from "react";
 import API from "../service/api.js";
-import { Link } from "react-router-dom";
-import jsPDF from "jspdf";
-import html2canvas from "html2canvas";
-import logo from "../assets/logo.png"; // Logo path
+import { Link, useNavigate } from "react-router-dom";
+import { FaUser, FaHotel, FaCalendarAlt, FaDollarSign } from "react-icons/fa";
 
-function CreateBooking() {
-  const [clients, setClients] = useState([]);
-  const [hotels, setHotels] = useState([]);
+function AddBooking() {
+    const navigate = useNavigate(); 
   const [formData, setFormData] = useState({
     clientId: "",
     hotelId: "",
     checkIn: "",
     checkOut: "",
-    guests: 1,
+    rooms: "",
+    totalAmount: "",
   });
+
+  const [clients, setClients] = useState([]);
+  const [hotels, setHotels] = useState([]);
   const [message, setMessage] = useState("");
+  const [fadeIn, setFadeIn] = useState(false);
 
-  const voucherRef = useRef();
-  const invoiceRef = useRef();
-
-  const [selectedClient, setSelectedClient] = useState(null);
-  const [selectedHotel, setSelectedHotel] = useState(null);
-
-  // Fetch clients and hotels
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const clientsRes = await API.get("/clients");
-        setClients(clientsRes.data);
-
-        const hotelsRes = await API.get("/hotels");
-        setHotels(hotelsRes.data);
-      } catch (error) {
-        console.log("Error fetching clients or hotels", error);
-      }
-    };
-    fetchData();
+    setFadeIn(true);
+    fetchClients();
+    fetchHotels();
   }, []);
 
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData({ ...formData, [name]: value });
+  const fetchClients = async () => {
+    try {
+      const res = await API.get("/clients");
+          console.log("CLIENTS RESPONSE:", res.data); // 👈 ADD THIS
 
-    // Set selected client/hotel for PDF
-    if (name === "clientId") {
-      const client = clients.find(c => c.id === value);
-      setSelectedClient(client);
+      setClients(res.data);
+    } catch (err) {
+      console.error(err);
     }
-    if (name === "hotelId") {
-      const hotel = hotels.find(h => h.id === value);
-      setSelectedHotel(hotel);
+  };
+
+  const fetchHotels = async () => {
+    try {
+      const res = await API.get("/hotels");
+      setHotels(res.data);
+    } catch (err) {
+      console.error(err);
     }
+  };
+
+  const handleChange = (e) => {
+    setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-
-    if (!formData.clientId || !formData.hotelId || !formData.checkIn || !formData.checkOut) {
-      setMessage("Please fill in all required fields ❌");
-      return;
-    }
-
     try {
       await API.post("/bookings", formData);
-      setMessage("Booking created successfully ✅");
+      setMessage("Booking created & invoice generated ✅");
       setFormData({
         clientId: "",
         hotelId: "",
         checkIn: "",
         checkOut: "",
-        guests: 0,
+        rooms: "",
+        totalAmount: "",
       });
-      setSelectedClient(null);
-      setSelectedHotel(null);
+      setTimeout(() => navigate("/bookings"), 1000); 
     } catch (error) {
-      setMessage("Error creating booking ❌");
+      console.error(error);
+      setMessage(error.response?.data?.message || "Error creating booking ❌");
     }
   };
 
-  // PDF Generation
-  const generatePDF = async (ref, filename) => {
-    if (!ref.current) return;
-    const canvas = await html2canvas(ref.current, { scale: 2 });
-    const imgData = canvas.toDataURL("image/png");
-    const pdf = new jsPDF("p", "mm", "a4");
-    const pdfWidth = pdf.internal.pageSize.getWidth();
-    const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
-    pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight);
-    pdf.save(filename);
-  };
-
   return (
-    <div style={styles.container}>
-      <div style={styles.card}>
+    <div style={styles.page}>
+      <div
+        style={{
+          ...styles.card,
+          opacity: fadeIn ? 1 : 0,
+          transform: fadeIn ? "translateY(0)" : "translateY(20px)",
+        }}
+      >
         <h2 style={styles.title}>Create New Booking</h2>
+        <p style={styles.subtitle}>Select client, hotel, and booking details</p>
 
         <form onSubmit={handleSubmit} style={styles.form}>
-          <select name="clientId" value={formData.clientId} onChange={handleChange} required>
-            <option value="">Select Client</option>
-            {clients.map(c => (
-              <option key={c.id} value={c.id}>
-                {c.fullName} ({c.phone || c.email})
-              </option>
-            ))}
-          </select>
+          <div style={styles.inputGroup}>
+            <FaUser style={styles.icon} />
+            <select
+              name="clientId"
+              value={formData.clientId}
+              onChange={handleChange}
+              required
+              style={styles.input}
+            >
+              <option value="">Select Client</option>
+              {clients.map((client) => (
+                <option key={client.id} value={client.id}>
+                  {client.name}
+                </option>
+              ))}
+            </select>
+          </div>
 
-          <select name="hotelId" value={formData.hotelId} onChange={handleChange} required>
-            <option value="">Select Hotel</option>
-            {hotels.map(h => (
-              <option key={h.id} value={h.id}>
-                {h.name} - {h.location}
-              </option>
-            ))}
-          </select>
+          <div style={styles.inputGroup}>
+            <FaHotel style={styles.icon} />
+            <select
+              name="hotelId"
+              value={formData.hotelId}
+              onChange={handleChange}
+              required
+              style={styles.input}
+            >
+              <option value="">Select Hotel</option>
+              {hotels.map((hotel) => (
+                <option key={hotel.id} value={hotel.id}>
+                  {hotel.name}
+                </option>
+              ))}
+            </select>
+          </div>
 
-          <input type="date" name="checkIn" value={formData.checkIn} onChange={handleChange} required />
-          <input type="date" name="checkOut" value={formData.checkOut} onChange={handleChange} required />
-          <input type="number" name="guests" value={formData.guests} onChange={handleChange} min="1" required />
+          <div style={styles.inputGroup}>
+            <FaCalendarAlt style={styles.icon} />
+            <input
+              type="date"
+              name="checkIn"
+              value={formData.checkIn}
+              onChange={handleChange}
+              required
+              style={styles.input}
+            />
+          </div>
 
-          <button type="submit" style={styles.button}>Create Booking</button>
+          <div style={styles.inputGroup}>
+            <FaCalendarAlt style={styles.icon} />
+            <input
+              type="date"
+              name="checkOut"
+              value={formData.checkOut}
+              onChange={handleChange}
+              required
+              style={styles.input}
+            />
+          </div>
+
+          <div style={styles.inputGroup}>
+            <FaHotel style={styles.icon} />
+            <input
+              type="text"
+              name="rooms"
+              placeholder="Number of Rooms (e.g. 2)"
+              value={formData.rooms}
+              onChange={handleChange}
+              required
+              style={styles.input}
+            />
+          </div>
+
+          <div style={styles.inputGroup}>
+            <FaDollarSign style={styles.icon} />
+            <input
+              type="number"
+              name="totalAmount"
+              placeholder="Total Amount"
+              value={formData.totalAmount}
+              onChange={handleChange}
+              required
+              style={styles.input}
+            />
+          </div>
+
+          <button
+            type="submit"
+            style={styles.button}
+            onMouseEnter={(e) => (e.currentTarget.style.transform = "scale(1.05)")}
+            onMouseLeave={(e) => (e.currentTarget.style.transform = "scale(1)")}
+          >
+            Create Booking
+          </button>
         </form>
 
         {message && <p style={styles.message}>{message}</p>}
 
-        <div style={styles.pdfButtons}>
-          <button onClick={() => generatePDF(voucherRef, "BigFive_Voucher.pdf")} style={styles.pdfButton}>
-            Generate Voucher PDF
-          </button>
-          <button onClick={() => generatePDF(invoiceRef, "BigFive_Invoice.pdf")} style={styles.pdfButton}>
-            Generate Invoice PDF
-          </button>
-        </div>
-
-        <Link to="/" style={styles.link}>← Home</Link>
-
-        {/* Hidden PDF Templates */}
-        <div style={{ display: "none" }}>
-          {/* Voucher */}
-          <div ref={voucherRef} style={styles.pdfCard}>
-            <img src={logo} alt="Big Five Logo" style={styles.logo} />
-            <h1 style={{ color: "#1e88e5", textAlign: "center" }}>BIG FIVE VOUCHER 2025</h1>
-            <hr />
-            <table style={styles.table}>
-              <tbody>
-                <tr><td>Client:</td><td>{selectedClient?.fullName}</td></tr>
-                <tr><td>Hotel:</td><td>{selectedHotel?.name}</td></tr>
-                <tr><td>Location:</td><td>{selectedHotel?.location}</td></tr>
-                <tr><td>Check-In:</td><td>{formData.checkIn}</td></tr>
-                <tr><td>Check-Out:</td><td>{formData.checkOut}</td></tr>
-                <tr><td>Guests:</td><td>{formData.guests}</td></tr>
-              </tbody>
-            </table>
-            <p style={{ marginTop: "20px", textAlign: "center" }}>Thank you for booking with Big Five!</p>
-          </div>
-
-          {/* Invoice */}
-          <div ref={invoiceRef} style={styles.pdfCard}>
-            <img src={logo} alt="Big Five Logo" style={styles.logo} />
-            <h1 style={{ color: "#43a047", textAlign: "center" }}>BIG FIVE INVOICE</h1>
-            <hr />
-            <table style={styles.table}>
-              <tbody>
-                <tr><td>Client:</td><td>{selectedClient?.fullName}</td></tr>
-                <tr><td>Hotel:</td><td>{selectedHotel?.name}</td></tr>
-                <tr><td>Check-In:</td><td>{formData.checkIn}</td></tr>
-                <tr><td>Check-Out:</td><td>{formData.checkOut}</td></tr>
-                <tr><td>Guests:</td><td>{formData.guests}</td></tr>
-                <tr><td>Price per Night:</td><td>{selectedHotel?.pricePerNight}</td></tr>
-                <tr><td>Total:</td><td>{selectedHotel?.pricePerNight * formData.guests}</td></tr>
-              </tbody>
-            </table>
-            <p style={{ marginTop: "20px", textAlign: "center" }}>Thank you for booking with Big Five!</p>
-          </div>
-        </div>
+        <Link to="/" style={styles.link}>
+          ← Back to Home
+        </Link>
       </div>
     </div>
   );
 }
 
-// Styles
+export default AddBooking;
+
 const styles = {
-  container: { minHeight: "100vh", display: "flex", justifyContent: "center", alignItems: "center", backgroundColor: "#f4f6f9", padding: "20px" },
-  card: { backgroundColor: "#fff", padding: "40px 30px", borderRadius: "12px", boxShadow: "0 4px 20px rgba(0,0,0,0.1)", width: "100%", maxWidth: "500px", boxSizing: "border-box" },
-  title: { marginBottom: "20px", color: "#1a1a1a", fontSize: "1.5rem", textAlign: "center" },
+  page: {
+    minHeight: "100vh",
+    display: "flex",
+    justifyContent: "center",
+    alignItems: "center",
+    background: "linear-gradient(135deg, #1e88e5, #42a5f5, #90caf9)",
+    padding: "20px",
+    fontFamily: "Arial, sans-serif",
+  },
+  card: {
+    width: "100%",
+    maxWidth: "550px",
+    background: "rgba(255,255,255,0.1)",
+    backdropFilter: "blur(15px)",
+    borderRadius: "15px",
+    padding: "40px 30px",
+    boxShadow: "0 8px 30px rgba(0,0,0,0.2)",
+    textAlign: "center",
+    color: "#fff",
+    transition: "all 0.5s ease",
+  },
+  title: { fontSize: "1.8rem", marginBottom: "5px", fontWeight: "bold" },
+  subtitle: { marginBottom: "25px", color: "#e0e0e0" },
   form: { display: "flex", flexDirection: "column", gap: "15px" },
-  button: { padding: "12px", borderRadius: "8px", border: "none", backgroundColor: "#1e88e5", color: "#fff", fontWeight: "bold", fontSize: "1rem", cursor: "pointer" },
-  pdfButtons: { display: "flex", justifyContent: "space-between", marginTop: "15px" },
-  pdfButton: { padding: "10px 12px", borderRadius: "8px", border: "none", backgroundColor: "#43a047", color: "#fff", fontWeight: "bold", cursor: "pointer" },
-  message: { marginTop: "15px", textAlign: "center", color: "green", fontWeight: "bold" },
-  link: { display: "block", marginTop: "20px", textAlign: "center", color: "#1e88e5", textDecoration: "none" },
-
-  // PDF Styles
-  pdfCard: { width: "800px", padding: "30px", fontFamily: "Arial", backgroundColor: "#fff", border: "1px solid #ccc" },
-  logo: { width: "150px", display: "block", margin: "0 auto 20px auto" },
-  table: { width: "100%", borderCollapse: "collapse" },
-  tableCell: { border: "1px solid #ccc", padding: "8px" },
+  inputGroup: {
+    display: "flex",
+    alignItems: "center",
+    background: "rgba(255,255,255,0.15)",
+    borderRadius: "8px",
+    padding: "10px 12px",
+    transition: "0.3s",
+    boxShadow: "0 0 6px rgba(255,255,255,0.2)",
+  },
+  icon: { marginRight: "10px", fontSize: "1.2rem" },
+  input: {
+    flex: 1,
+    border: "none",
+    outline: "none",
+    background: "transparent",
+    color: "#fff",
+    fontSize: "1rem",
+    padding: "8px 0",
+    fontWeight: "500",
+  },
+  button: {
+    marginTop: "10px",
+    padding: "12px",
+    background: "linear-gradient(90deg, #1e88e5, #42a5f5)",
+    color: "#fff",
+    fontSize: "1rem",
+    fontWeight: "bold",
+    border: "none",
+    borderRadius: "8px",
+    cursor: "pointer",
+    transition: "all 0.3s ease",
+  },
+  message: { marginTop: "15px", fontWeight: "bold", color: "#fff" },
+  link: { display: "block", marginTop: "20px", textAlign: "center", color: "#fff", textDecoration: "underline" },
 };
-
-export default CreateBooking;

@@ -1,94 +1,93 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import API from "../service/api.js";
 import { Link } from "react-router-dom";
+import { FaHotel, FaMapMarkerAlt, FaEnvelope, FaPhone, FaMoneyBill, FaUniversity } from "react-icons/fa";
 
 function AddHotel() {
   const [formData, setFormData] = useState({
     name: "",
     location: "",
-    rooms: "",
-    pricePerNight: "",
-    contact: "",
+    email: "",
+    phone: "",
+    mpesaNumber: "",
+    bankDetails: "",
   });
 
   const [message, setMessage] = useState("");
+  const [fadeIn, setFadeIn] = useState(false);
+
+  useEffect(() => {
+    setFadeIn(true);
+  }, []);
 
   const handleChange = (e) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value,
-    });
+    setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-
     try {
-      const res = await API.post("/hotels", formData);
+      await API.post("/hotels", formData);
       setMessage("Hotel added successfully ✅");
       setFormData({
         name: "",
         location: "",
-        rooms: "",
-        pricePerNight: "",
-        contact: "",
+        email: "",
+        phone: "",
+        mpesaNumber: "",
+        bankDetails: "",
       });
     } catch (error) {
+      console.error(error);
       setMessage("Error adding hotel ❌");
     }
   };
 
+  const fields = [
+    { name: "name", placeholder: "Hotel Name", icon: <FaHotel />, required: true },
+    { name: "location", placeholder: "Location", icon: <FaMapMarkerAlt />, required: false },
+    { name: "email", placeholder: "Email", icon: <FaEnvelope />, required: false },
+    { name: "phone", placeholder: "Phone Number", icon: <FaPhone />, required: false },
+    { name: "mpesaNumber", placeholder: "Mpesa Number", icon: <FaMoneyBill />, required: false },
+    { name: "bankDetails", placeholder: "Bank Details", icon: <FaUniversity />, required: false },
+  ];
+
   return (
-    <div style={styles.container}>
-      <div style={styles.card}>
+    <div style={styles.page}>
+      <div
+        style={{
+          ...styles.card,
+          opacity: fadeIn ? 1 : 0,
+          transform: fadeIn ? "translateY(0)" : "translateY(20px)",
+        }}
+      >
         <h2 style={styles.title}>Add New Hotel</h2>
+        <p style={styles.subtitle}>Fill in the hotel details below</p>
 
         <form onSubmit={handleSubmit} style={styles.form}>
-          <input
-            type="text"
-            name="name"
-            placeholder="Hotel Name"
-            value={formData.name}
-            onChange={handleChange}
-            required
-          />
+          {fields.map((field) => (
+            <div style={styles.inputGroup} key={field.name}>
+              <span style={styles.icon}>{field.icon}</span>
+              <input
+                type={field.name === "email" ? "email" : "text"}
+                name={field.name}
+                placeholder={field.placeholder}
+                value={formData[field.name]}
+                onChange={handleChange}
+                style={styles.input}
+                required={field.required}
+                onFocus={(e) => (e.target.parentNode.style.boxShadow = "0 0 12px rgba(255,255,255,0.6)")}
+                onBlur={(e) => (e.target.parentNode.style.boxShadow = "0 0 6px rgba(255,255,255,0.2)")}
+              />
+            </div>
+          ))}
 
-          <input
-            type="text"
-            name="location"
-            placeholder="Location"
-            value={formData.location}
-            onChange={handleChange}
-            required
-          />
-
-          <input
-            type="number"
-            name="rooms"
-            placeholder="Number of Rooms"
-            value={formData.rooms}
-            onChange={handleChange}
-            required
-          />
-
-          <input
-            type="number"
-            name="pricePerNight"
-            placeholder="Price per Night"
-            value={formData.pricePerNight}
-            onChange={handleChange}
-            required
-          />
-
-          <input
-            type="text"
-            name="contact"
-            placeholder="Contact Info"
-            value={formData.contact}
-            onChange={handleChange}
-          />
-
-          <button type="submit" style={styles.button}>
+          <button
+            type="submit"
+            style={styles.button}
+            onMouseEnter={(e) => (e.currentTarget.style.transform = "scale(1.05)")}
+            onMouseLeave={(e) => (e.currentTarget.style.transform = "scale(1)")}
+          >
             Add Hotel
           </button>
         </form>
@@ -103,58 +102,101 @@ function AddHotel() {
   );
 }
 
+export default AddHotel;
+
 const styles = {
-  container: {
+  page: {
     minHeight: "100vh",
     display: "flex",
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "#f4f6f9",
+    background: "linear-gradient(135deg, #1e88e5, #42a5f5, #90caf9)",
     padding: "20px",
+    fontFamily: "Arial, sans-serif",
   },
+
   card: {
-    backgroundColor: "#fff",
-    padding: "40px 30px",
-    borderRadius: "12px",
-    boxShadow: "0 4px 20px rgba(0,0,0,0.1)",
     width: "100%",
-    maxWidth: "450px",
-    boxSizing: "border-box",
-  },
-  title: {
-    marginBottom: "20px",
-    color: "#1a1a1a",
-    fontSize: "1.5rem",
+    maxWidth: "500px",
+    background: "rgba(255,255,255,0.1)",
+    backdropFilter: "blur(15px)",
+    borderRadius: "15px",
+    padding: "40px 30px",
+    boxShadow: "0 8px 30px rgba(0,0,0,0.2)",
     textAlign: "center",
+    color: "#fff",
+    transition: "all 0.5s ease",
   },
+
+  title: {
+    fontSize: "1.8rem",
+    marginBottom: "5px",
+    fontWeight: "bold",
+  },
+
+  subtitle: {
+    marginBottom: "25px",
+    color: "#e0e0e0",
+  },
+
   form: {
     display: "flex",
     flexDirection: "column",
     gap: "15px",
   },
-  button: {
-    padding: "12px",
+
+  inputGroup: {
+    display: "flex",
+    alignItems: "center",
+    background: "rgba(255,255,255,0.15)",
     borderRadius: "8px",
-    border: "none",
-    backgroundColor: "#1e88e5",
-    color: "#fff",
-    fontWeight: "bold",
-    fontSize: "1rem",
-    cursor: "pointer",
+    padding: "10px 12px",
+    transition: "0.3s",
+    boxShadow: "0 0 6px rgba(255,255,255,0.2)",
   },
+
+  icon: {
+    marginRight: "10px",
+    color: "#ffffff",
+    fontSize: "1.2rem",
+    transition: "0.3s",
+  },
+
+  input: {
+    flex: 1,
+    border: "none",
+    outline: "none",
+    background: "transparent",
+    color: "#fff",
+    fontSize: "1rem",
+    padding: "8px 0",
+    fontWeight: "500",
+  },
+
+  button: {
+    marginTop: "10px",
+    padding: "12px",
+    background: "linear-gradient(90deg, #1e88e5, #42a5f5)",
+    color: "#fff",
+    fontSize: "1rem",
+    fontWeight: "bold",
+    border: "none",
+    borderRadius: "8px",
+    cursor: "pointer",
+    transition: "all 0.3s ease",
+  },
+
   message: {
     marginTop: "15px",
-    textAlign: "center",
-    color: "green",
     fontWeight: "bold",
+    color: "#fff",
   },
+
   link: {
     display: "block",
     marginTop: "20px",
     textAlign: "center",
-    color: "#1e88e5",
-    textDecoration: "none",
+    color: "#fff",
+    textDecoration: "underline",
   },
 };
-
-export default AddHotel;

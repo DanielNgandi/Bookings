@@ -5,6 +5,7 @@ import AddHotel from "./pages/AddHotel";
 import CreateBooking from "./pages/createBooking";
 import Register from "./components/Register";
 import Login from "./components/Login";
+import ViewBookings from "./pages/ViewBookings";
 
 
 function App() {
@@ -17,6 +18,7 @@ function App() {
         <Route path="/add-client" element={<AddClient />} />
         <Route path="/add-hotel" element={<AddHotel />} />
         <Route path="/create-booking" element={<CreateBooking />} />
+        <Route path="/bookings" element={<ViewBookings />} />
       </Routes>
     </Router>
   );

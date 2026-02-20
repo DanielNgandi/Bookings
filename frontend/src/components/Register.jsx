@@ -26,12 +26,16 @@ function Register() {
       setLoading(true);
       const res = await API.post("/auth/register", formData);
 
-      // Save token and navigate
-      localStorage.setItem("token", res.data.token);
-      localStorage.setItem("user", JSON.stringify(res.data.user));
+      // ✅ SINGLE SOURCE OF TRUTH FOR TOKEN
+      const userData = {
+        ...res.data.user,
+        token: res.data.token,
+      };
+
+      localStorage.setItem("user", JSON.stringify(userData));
+
       setMessage("Registration successful ✅ Redirecting...");
-      
-      setTimeout(() => navigate("/"), 1000);
+      setTimeout(() => navigate("/login"), 1000);
     } catch (err) {
       setMessage(err.response?.data?.message || "Registration failed ❌");
     } finally {
@@ -53,6 +57,7 @@ function Register() {
           style={styles.input}
           required
         />
+
         <input
           type="email"
           name="email"
@@ -62,6 +67,7 @@ function Register() {
           style={styles.input}
           required
         />
+
         <input
           type="password"
           name="password"

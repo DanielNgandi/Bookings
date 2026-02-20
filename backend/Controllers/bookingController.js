@@ -1,4 +1,5 @@
 import prisma from "../config/prisma.js";
+import { generateInvoice, generateVoucher } from "../utils/pdfGenerator.js";
 
 
 // Generate Invoice Number
@@ -6,6 +7,46 @@ const generateInvoiceNumber = () => {
   const timestamp = Date.now();
   const random = Math.floor(Math.random() * 1000);
   return `INV-${timestamp}-${random}`;
+};
+export const downloadInvoice = async (req, res) => {
+  try {
+    const booking = await prisma.booking.findUnique({
+      where: { id: Number(req.params.id) },
+      include: {
+        client: true,
+        hotel: true,
+      },
+    });
+
+    if (!booking) {
+      return res.status(404).json({ message: "Booking not found" });
+    }
+
+    generateInvoice(res, booking);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Error generating invoice" });
+  }
+};
+export const downloadVoucher = async (req, res) => {
+  try {
+    const booking = await prisma.booking.findUnique({
+      where: { id: Number(req.params.id) },
+      include: {
+        client: true,
+        hotel: true,
+      },
+    });
+
+    if (!booking) {
+      return res.status(404).json({ message: "Booking not found" });
+    }
+
+    generateVoucher(res, booking);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Error generating voucher" });
+  }
 };
 
 // Create Booking + Auto-Invoice

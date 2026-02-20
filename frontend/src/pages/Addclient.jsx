@@ -1,16 +1,24 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import API from "../service/api.js";
+import { useNavigate } from "react-router-dom";
+import { FaUser, FaBuilding, FaGlobe, FaEnvelope, FaPhone } from "react-icons/fa";
 
 function AddClient() {
+  const navigate = useNavigate();
   const [formData, setFormData] = useState({
-    fullName: "",
-    passportNumber: "",
-    nationality: "",
+    name: "",
+    company: "",
+    country: "",
     email: "",
     phone: "",
   });
 
   const [message, setMessage] = useState("");
+  const [fadeIn, setFadeIn] = useState(false);
+
+  useEffect(() => {
+    setFadeIn(true);
+  }, []);
 
   const handleChange = (e) => {
     setFormData({
@@ -21,92 +29,158 @@ function AddClient() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-
     try {
-      const res = await API.post("/clients", formData);
+      await API.post("/clients", formData); // matches controller
       setMessage("Client added successfully ✅");
-      setFormData({
-        fullName: "",
-        passportNumber: "",
-        nationality: "",
-        email: "",
-        phone: "",
-      });
+      setFormData({ name: "", company: "", country: "", email: "", phone: "" });
+      
+     setTimeout(() => navigate("/add-hotel"), 1000);
+
     } catch (error) {
+      console.error(error);
       setMessage("Error adding client ❌");
     }
   };
 
   return (
-    <div style={styles.container}>
-      <h2>Add New Client</h2>
+    <div style={styles.page}>
+      <div
+        style={{
+          ...styles.card,
+          opacity: fadeIn ? 1 : 0,
+          transform: fadeIn ? "translateY(0)" : "translateY(20px)",
+        }}
+      >
+        <h2 style={styles.title}>Add New Client</h2>
+        <p style={styles.subtitle}>Fill in the client details below</p>
 
-      <form onSubmit={handleSubmit} style={styles.form}>
-        <input
-          type="text"
-          name="fullName"
-          placeholder="Full Name"
-          value={formData.fullName}
-          onChange={handleChange}
-          required
-        />
+        <form onSubmit={handleSubmit} style={styles.form}>
+          {[
+            { name: "name", placeholder: "Full Name", icon: <FaUser />, required: true },
+            { name: "company", placeholder: "Company", icon: <FaBuilding />, required: false },
+            { name: "country", placeholder: "Country", icon: <FaGlobe />, required: false },
+            { name: "email", placeholder: "Email", icon: <FaEnvelope />, required: false },
+            { name: "phone", placeholder: "Phone Number", icon: <FaPhone />, required: false },
+          ].map((field) => (
+            <div style={styles.inputGroup} key={field.name}>
+              <span style={styles.icon}>{field.icon}</span>
+              <input
+                type={field.name === "email" ? "email" : "text"}
+                name={field.name}
+                placeholder={field.placeholder}
+                value={formData[field.name]}
+                onChange={handleChange}
+                style={styles.input}
+                required={field.required}
+                onFocus={(e) => (e.target.parentNode.style.boxShadow = "0 0 12px rgba(255,255,255,0.6)")}
+                onBlur={(e) => (e.target.parentNode.style.boxShadow = "0 0 6px rgba(255,255,255,0.2)")}
+              />
+            </div>
+          ))}
 
-        <input
-          type="text"
-          name="passportNumber"
-          placeholder="Passport Number"
-          value={formData.passportNumber}
-          onChange={handleChange}
-          required
-        />
+          <button
+            type="submit"
+            style={styles.button}
+            onMouseEnter={(e) => (e.currentTarget.style.transform = "scale(1.05)")}
+            onMouseLeave={(e) => (e.currentTarget.style.transform = "scale(1)")}
+          >
+            Add Client
+          </button>
+        </form>
 
-        <input
-          type="text"
-          name="nationality"
-          placeholder="Nationality"
-          value={formData.nationality}
-          onChange={handleChange}
-          required
-        />
-
-        <input
-          type="email"
-          name="email"
-          placeholder="Email"
-          value={formData.email}
-          onChange={handleChange}
-        />
-
-        <input
-          type="text"
-          name="phone"
-          placeholder="Phone Number"
-          value={formData.phone}
-          onChange={handleChange}
-        />
-
-        <button type="submit">Add Client</button>
-      </form>
-
-      {message && <p>{message}</p>}
+        {message && <p style={styles.message}>{message}</p>}
+      </div>
     </div>
   );
 }
 
+export default AddClient;
+
 const styles = {
-  container: {
-    maxWidth: "500px",
-    margin: "50px auto",
+  page: {
+    minHeight: "100vh",
+    display: "flex",
+    justifyContent: "center",
+    alignItems: "center",
+    background: "linear-gradient(135deg, #1e88e5, #42a5f5, #90caf9)",
     padding: "20px",
-    border: "1px solid #ddd",
-    borderRadius: "10px",
-    backgroundColor: "#f9f9f9",
+    fontFamily: "Arial, sans-serif",
   },
+
+  card: {
+    width: "100%",
+    maxWidth: "500px",
+    background: "rgba(255, 255, 255, 0.1)",
+    backdropFilter: "blur(15px)",
+    borderRadius: "15px",
+    padding: "40px 30px",
+    boxShadow: "0 8px 30px rgba(0,0,0,0.2)",
+    textAlign: "center",
+    color: "#fff",
+    transition: "all 0.5s ease",
+  },
+
+  title: {
+    fontSize: "1.8rem",
+    marginBottom: "5px",
+    fontWeight: "bold",
+  },
+
+  subtitle: {
+    marginBottom: "25px",
+    color: "#e0e0e0",
+  },
+
   form: {
     display: "flex",
     flexDirection: "column",
     gap: "15px",
   },
-};
 
-export default AddClient;
+  inputGroup: {
+    display: "flex",
+    alignItems: "center",
+    background: "rgba(255,255,255,0.15)",
+    borderRadius: "8px",
+    padding: "10px 12px",
+    transition: "0.3s",
+    boxShadow: "0 0 6px rgba(255,255,255,0.2)",
+  },
+
+  icon: {
+    marginRight: "10px",
+    color: "#ffffff",
+    fontSize: "1.2rem",
+    transition: "0.3s",
+  },
+
+  input: {
+    flex: 1,
+    border: "none",
+    outline: "none",
+    background: "transparent",
+    color: "#fff",
+    fontSize: "1rem",
+    padding: "8px 0",
+    fontWeight: "500",
+  },
+
+  button: {
+    marginTop: "10px",
+    padding: "12px",
+    background: "linear-gradient(90deg, #1e88e5, #42a5f5)",
+    color: "#fff",
+    fontSize: "1rem",
+    fontWeight: "bold",
+    border: "none",
+    borderRadius: "8px",
+    cursor: "pointer",
+    transition: "all 0.3s ease",
+  },
+
+  message: {
+    marginTop: "15px",
+    fontWeight: "bold",
+    color: "#fff",
+  },
+};

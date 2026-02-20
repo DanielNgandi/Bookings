@@ -26,11 +26,15 @@ function Login() {
       setLoading(true);
       const res = await API.post("/auth/login", formData);
 
-      // Save token and navigate
-      localStorage.setItem("token", res.data.token);
-      localStorage.setItem("user", JSON.stringify(res.data.user));
-      setMessage("Login successful ✅ Redirecting...");
+      // ✅ SAME TOKEN STRATEGY AS REGISTER
+      const userData = {
+        ...res.data.user,
+        token: res.data.token,
+      };
 
+      localStorage.setItem("user", JSON.stringify(userData));
+
+      setMessage("Login successful ✅ Redirecting...");
       setTimeout(() => navigate("/"), 1000);
     } catch (err) {
       setMessage(err.response?.data?.message || "Login failed ❌");
@@ -53,6 +57,7 @@ function Login() {
           style={styles.input}
           required
         />
+
         <input
           type="password"
           name="password"
