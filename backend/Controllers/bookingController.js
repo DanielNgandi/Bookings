@@ -15,6 +15,9 @@ export const downloadInvoice = async (req, res) => {
       include: {
         client: true,
         hotel: true,
+        invoice: true,
+        items: true, // ⭐ VERY IMPORTANT
+        payment: true,
       },
     });
 
@@ -35,6 +38,8 @@ export const downloadVoucher = async (req, res) => {
       include: {
         client: true,
         hotel: true,
+        voucher: true, 
+        items: true, 
       },
     });
 
@@ -42,6 +47,9 @@ export const downloadVoucher = async (req, res) => {
       return res.status(404).json({ message: "Booking not found" });
     }
 
+    // Log to verify we're getting the data
+    console.log("Generating voucher for booking:", booking.id);
+    
     generateVoucher(res, booking);
   } catch (error) {
     console.error(error);
@@ -49,30 +57,32 @@ export const downloadVoucher = async (req, res) => {
   }
 };
 
-// Create Booking + Auto-Invoice
+// Create Booking + Auto-Invoice with multiple service items
 export const createBooking = async (req, res) => {
-  const { clientId, hotelId, checkIn, checkOut, rooms, totalAmount } = req.body;
+  const { clientId, hotelId, checkIn, checkOut, items } = req.body;
 
-  if (!clientId || !hotelId || !checkIn || !checkOut || !rooms || !totalAmount) {
-    return res.status(400).json({ message: "All booking fields are required" });
+  if (!clientId || !hotelId || !checkIn || !checkOut || !items || !items.length) {
+    return res.status(400).json({ message: "All booking fields and items are required" });
   }
 
   try {
     const result = await prisma.$transaction(async (tx) => {
-
-      // 1️⃣ Validate client belongs to tour guide
+      // Validate client
       const client = await tx.client.findFirst({
         where: { id: Number(clientId), userId: req.user.id }
       });
       if (!client) throw new Error("Client not found");
 
-      // 2️⃣ Validate hotel belongs to tour guide
+      // Validate hotel
       const hotel = await tx.hotel.findFirst({
         where: { id: Number(hotelId), userId: req.user.id }
       });
       if (!hotel) throw new Error("Hotel not found");
 
-      // 3️⃣ Create Booking
+      // Calculate total amount
+      const totalAmount = items.reduce((sum, i) => sum + Number(i.amount || 0), 0);
+
+      // Create booking
       const booking = await tx.booking.create({
         data: {
           userId: req.user.id,
@@ -80,17 +90,24 @@ export const createBooking = async (req, res) => {
           hotelId: Number(hotelId),
           checkIn: new Date(checkIn),
           checkOut: new Date(checkOut),
-          rooms,
-          totalAmount: Number(totalAmount),
-        }
+          rooms: items.length, 
+          totalAmount,
+          items: {
+            create: items.map(i => ({
+              date: new Date(i.date),
+              service: i.service,
+              pax: Number(i.pax),
+              costPP: Number(i.costPP),
+              amount: Number(i.amount)
+            }))
+          }
+        },
+        include: { items: true }
       });
 
-      // 4️⃣ Auto-generate Invoice
+      // Create invoice
       const invoice = await tx.invoice.create({
-        data: {
-          bookingId: booking.id,
-          invoiceNumber: generateInvoiceNumber()
-        }
+        data: { bookingId: booking.id, invoiceNumber: generateInvoiceNumber() }
       });
 
       return { booking, invoice };
@@ -104,17 +121,13 @@ export const createBooking = async (req, res) => {
 
   } catch (error) {
     console.error(error);
-
-    if (
-      error.message === "Client not found" ||
-      error.message === "Hotel not found"
-    ) {
+    if (error.message === "Client not found" || error.message === "Hotel not found") {
       return res.status(400).json({ message: error.message });
     }
-
     res.status(500).json({ message: "Server error" });
   }
 };
+
 
 // Get all bookings (for logged-in tour operator)
 export const getAllBookings = async (req, res) => {

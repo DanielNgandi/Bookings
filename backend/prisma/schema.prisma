@@ -28,10 +28,12 @@ model Client {
   email     String?
   phone     String?
   country   String?
+  address   String? 
   createdAt DateTime @default(now())
 
   user     User    @relation(fields: [userId], references: [id])
   bookings Booking[]
+  
 }
 
 model Hotel {
@@ -56,19 +58,42 @@ model Booking {
   hotelId     Int
   checkIn     DateTime
   checkOut    DateTime
-  rooms       String
+  rooms       Int
   totalAmount Float
   status      BookingStatus @default(PENDING)
+  
+  reference       String?   // Ref: DB BFK
+  invoiceDate     DateTime? // invoice date
+  lastPaymentDate DateTime? // payment deadline
+  notes           String?
   createdAt   DateTime @default(now())
 
   user    User    @relation(fields: [userId], references: [id])
   client  Client  @relation(fields: [clientId], references: [id])
   hotel   Hotel   @relation(fields: [hotelId], references: [id])
 
+items BookingItem[]
+
   payment Payment?
   invoice Invoice?
   voucher Voucher?
   receipt Receipt?
+}
+
+model BookingItem {
+  id        Int      @id @default(autoincrement())
+  bookingId Int
+  date      DateTime
+  service   String   // Safari Adults, Charter etc
+  pax       Int
+  costPP    Float
+  amount    Float
+
+  createdAt DateTime @default(now())
+
+  booking Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+
+  @@index([bookingId])
 }
 
 model Payment {
@@ -121,5 +146,4 @@ enum BookingStatus {
 enum PaymentMethod {
   MPESA
   BANK
-  CASH
 }

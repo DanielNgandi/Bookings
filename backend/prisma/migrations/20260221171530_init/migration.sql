@@ -19,6 +19,7 @@ CREATE TABLE `Client` (
     `email` VARCHAR(191) NULL,
     `phone` VARCHAR(191) NULL,
     `country` VARCHAR(191) NULL,
+    `address` VARCHAR(191) NULL,
     `createdAt` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
 
     PRIMARY KEY (`id`)
@@ -47,11 +48,30 @@ CREATE TABLE `Booking` (
     `hotelId` INTEGER NOT NULL,
     `checkIn` DATETIME(3) NOT NULL,
     `checkOut` DATETIME(3) NOT NULL,
-    `rooms` VARCHAR(191) NOT NULL,
+    `rooms` INTEGER NOT NULL,
     `totalAmount` DOUBLE NOT NULL,
     `status` ENUM('PENDING', 'PAID', 'CANCELLED') NOT NULL DEFAULT 'PENDING',
+    `reference` VARCHAR(191) NULL,
+    `invoiceDate` DATETIME(3) NULL,
+    `lastPaymentDate` DATETIME(3) NULL,
+    `notes` VARCHAR(191) NULL,
     `createdAt` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
 
+    PRIMARY KEY (`id`)
+) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+-- CreateTable
+CREATE TABLE `BookingItem` (
+    `id` INTEGER NOT NULL AUTO_INCREMENT,
+    `bookingId` INTEGER NOT NULL,
+    `date` DATETIME(3) NOT NULL,
+    `service` VARCHAR(191) NOT NULL,
+    `pax` INTEGER NOT NULL,
+    `costPP` DOUBLE NOT NULL,
+    `amount` DOUBLE NOT NULL,
+    `createdAt` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+
+    INDEX `BookingItem_bookingId_idx`(`bookingId`),
     PRIMARY KEY (`id`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
@@ -60,7 +80,7 @@ CREATE TABLE `Payment` (
     `id` INTEGER NOT NULL AUTO_INCREMENT,
     `bookingId` INTEGER NOT NULL,
     `amount` DOUBLE NOT NULL,
-    `method` ENUM('MPESA', 'BANK', 'CASH') NOT NULL,
+    `method` ENUM('MPESA', 'BANK') NOT NULL,
     `transactionId` VARCHAR(191) NULL,
     `paymentDate` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
 
@@ -121,6 +141,9 @@ ALTER TABLE `Booking` ADD CONSTRAINT `Booking_clientId_fkey` FOREIGN KEY (`clien
 
 -- AddForeignKey
 ALTER TABLE `Booking` ADD CONSTRAINT `Booking_hotelId_fkey` FOREIGN KEY (`hotelId`) REFERENCES `Hotel`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE `BookingItem` ADD CONSTRAINT `BookingItem_bookingId_fkey` FOREIGN KEY (`bookingId`) REFERENCES `Booking`(`id`) ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE `Payment` ADD CONSTRAINT `Payment_bookingId_fkey` FOREIGN KEY (`bookingId`) REFERENCES `Booking`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
