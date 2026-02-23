@@ -1,5 +1,5 @@
 import prisma from "../config/prisma.js";
-import { generateInvoice, generateVoucher } from "../utils/pdfGenerator.js";
+import { generateInvoice, generateVoucher, generateReceipt } from "../utils/pdfGenerator.js";
 
 
 // Generate Invoice Number
@@ -54,6 +54,49 @@ export const downloadVoucher = async (req, res) => {
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: "Error generating voucher" });
+  }
+};
+export const downloadReceipt = async (req, res) => {
+  try {
+    const bookingId = Number(req.params.id);
+
+    if (isNaN(bookingId)) {
+      return res.status(400).json({ message: "Invalid booking id" });
+    }
+
+    // ✅ secure ownership check
+    const booking = await prisma.booking.findFirst({
+      where: {
+        id: bookingId,
+        userId: req.user.id
+      },
+      include: {
+        client: true,
+        hotel: true,
+        payment: true,
+        receipt: true
+      }
+    });
+
+    if (!booking) {
+      return res.status(404).json({ message: "Booking not found" });
+    }
+
+    if (!booking.payment || !booking.receipt) {
+      return res.status(400).json({ message: "Receipt not available yet" });
+    }
+
+    // ✅ generate PDF
+    return generateReceipt(
+      res,
+      booking,
+      booking.payment,
+      booking.receipt
+    );
+
+  } catch (error) {
+    console.error("Receipt download error:", error);
+    res.status(500).json({ message: "Server error generating receipt" });
   }
 };
 

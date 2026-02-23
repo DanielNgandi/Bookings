@@ -1,30 +1,47 @@
 import prisma from "../config/prisma.js";
 
-// Generate Receipt Number
+// Generate secure Receipt Number
 const generateReceiptNumber = () => {
   const timestamp = Date.now();
-  const random = Math.floor(Math.random() * 1000);
+  const random = Math.floor(Math.random() * 100000); // more unique
   return `RCPT-${timestamp}-${random}`;
 };
 
 // Create Payment + Auto Receipt + Update Booking
 export const createPayment = async (req, res) => {
-  const { bookingId, amount, method, transactionId } = req.body;
-
-  if (!bookingId || !amount || !method) {
-    return res.status(400).json({
-      message: "bookingId, amount and method are required"
-    });
-  }
-
   try {
+    const { bookingId, amount, method, transactionId } = req.body;
 
+    // ✅ Validate inputs
+    if (!bookingId || !amount || !method) {
+      return res.status(400).json({
+        message: "bookingId, amount, and method are required"
+      });
+    }
+
+    const bookingIdNum = Number(bookingId);
+    const paymentAmount = parseFloat(amount);
+
+    if (isNaN(bookingIdNum) || bookingIdNum <= 0) {
+      return res.status(400).json({ message: "Invalid bookingId" });
+    }
+
+    if (isNaN(paymentAmount) || paymentAmount <= 0) {
+      return res.status(400).json({ message: "Invalid amount" });
+    }
+
+    const validMethods = ["MPESA", "BANK", "CASH"];
+    if (!validMethods.includes(method)) {
+      return res.status(400).json({ message: "Invalid payment method" });
+    }
+
+    // ✅ Transaction-safe creation
     const result = await prisma.$transaction(async (tx) => {
 
       // 1️⃣ Check booking belongs to logged-in user
       const booking = await tx.booking.findFirst({
         where: {
-          id: Number(bookingId),
+          id: bookingIdNum,
           userId: req.user.id
         }
       });
@@ -35,39 +52,33 @@ export const createPayment = async (req, res) => {
 
       // 2️⃣ Prevent double payment
       const existingPayment = await tx.payment.findUnique({
-        where: { bookingId: Number(bookingId) }
+        where: { bookingId: bookingIdNum }
       });
 
       if (existingPayment) {
         throw new Error("Payment already recorded");
       }
 
-      // 3️⃣ Validate method
-      const validMethods = ["MPESA", "BANK", "CASH"];
-      if (!validMethods.includes(method)) {
-        throw new Error("Invalid payment method");
-      }
-
-      // 4️⃣ Create Payment
+      // 3️⃣ Create Payment
       const payment = await tx.payment.create({
         data: {
-          bookingId: Number(bookingId),
-          amount: Number(amount),
+          bookingId: bookingIdNum,
+          amount: paymentAmount,
           method,
-          transactionId: transactionId || null
+          transactionId: transactionId?.trim() || null
         }
       });
 
-      // 5️⃣ Update Booking status → PAID
+      // 4️⃣ Update Booking status → PAID
       await tx.booking.update({
-        where: { id: Number(bookingId) },
+        where: { id: bookingIdNum },
         data: { status: "PAID" }
       });
 
-      // 6️⃣ Create Receipt automatically
+      // 5️⃣ Create Receipt automatically
       const receipt = await tx.receipt.create({
         data: {
-          bookingId: Number(bookingId),
+          bookingId: bookingIdNum,
           receiptNumber: generateReceiptNumber()
         }
       });
@@ -76,22 +87,20 @@ export const createPayment = async (req, res) => {
     });
 
     res.status(201).json({
-      message: "Payment recorded & receipt generated",
+      message: "Payment recorded & receipt generated successfully",
       payment: result.payment,
       receipt: result.receipt
     });
 
   } catch (error) {
-    console.error(error);
+    console.error("Payment error:", error);
 
-    if (
-      error.message === "Booking not found" ||
-      error.message === "Payment already recorded" ||
-      error.message === "Invalid payment method"
-    ) {
+    // ✅ Client-safe messages
+    const clientErrors = ["Booking not found", "Payment already recorded", "Invalid payment method"];
+    if (clientErrors.includes(error.message)) {
       return res.status(400).json({ message: error.message });
     }
 
-    res.status(500).json({ message: "Server error" });
+    res.status(500).json({ message: "Server error while processing payment" });
   }
 };

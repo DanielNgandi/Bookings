@@ -211,13 +211,9 @@ export const generateVoucher = (res, booking) => {
   const nights = getNights(booking.checkIn, booking.checkOut);
   const reference = booking.reference || "084901";
 
-  // ===== COMPANY HEADER with all information =====
-  // Logo
+  
   try {
-    // const logoPath = path.join(process.cwd(), "assets", "logo.jpg");
-    // if (fs.existsSync(logoPath)) {
-    //   doc.image(logoPath, 50, 30, { width: 100 });
-    // }
+    
     const logoPath = path.join(process.cwd(), "assets", "logo.png");
     if (fs.existsSync(logoPath)) {
       doc.image(logoPath, 40, 30, { width: 90 });
@@ -313,6 +309,124 @@ export const generateVoucher = (res, booking) => {
     50, 750,
     { align: "center", width: 500 }
   );
+
+  doc.end();
+};
+// ================= RECEIPT =================
+export const generateReceipt = (res, booking, payment, receipt) => {
+  const doc = new PDFDocument({ margin: 40, size: "A4" });
+
+  res.setHeader("Content-Type", "application/pdf");
+  res.setHeader(
+    "Content-Disposition",
+    `attachment; filename=receipt-${receipt?.receiptNumber || booking.id}.pdf`
+  );
+
+  doc.pipe(res);
+
+  // ===== SAFE LOGO =====
+  try {
+    const logoPath = path.join(process.cwd(), "assets", "logo.png");
+    if (fs.existsSync(logoPath)) {
+      doc.image(logoPath, 40, 30, { width: 90 });
+    }
+  } catch (err) {
+    console.log("Logo skipped");
+  }
+
+  // ===== HEADER =====
+  doc
+    .fontSize(14)
+    .font("Helvetica-Bold")
+    .text("BIG FIVE TOURS & SAFARIS LTD", 40, 100)
+    .font("Helvetica")
+    .fontSize(10)
+    .text("P.O BOX 10367 00400,", 40)
+    .text("WESTLANDS, BROOKSIDE - NAIROBI, KENYA", 40);
+
+  // ===== TITLE =====
+  doc
+    .fontSize(18)
+    .font("Helvetica-Bold")
+    .text("OFFICIAL RECEIPT", 350, 40, { align: "right" });
+
+  // ===== STATUS BADGE =====
+  doc
+    .roundedRect(350, 70, 140, 20, 4)
+    .fillColor("#16a34a")
+    .fill()
+    .fillColor("white")
+    .fontSize(9)
+    .text("PAYMENT CONFIRMED", 350, 75, {
+      width: 140,
+      align: "center",
+    });
+
+  doc.fillColor("black");
+
+  // ===== META =====
+  doc
+    .fontSize(10)
+    .font("Helvetica")
+    .text(`RECEIPT NUMBER: ${receipt?.receiptNumber || "-"}`, 350, 105)
+    .text(`RECEIPT DATE: ${formatDatePretty(payment?.paymentDate)}`, 350)
+    .text(`BOOKING REF: ${booking.reference || booking.id}`, 350);
+
+  // ===== RECEIVED FROM =====
+  doc
+    .fontSize(11)
+    .font("Helvetica-Bold")
+    .text("RECEIVED FROM:", 40, 160)
+    .font("Helvetica")
+    .fontSize(10)
+    .text(booking.client?.name || "-", 40)
+    .text(booking.client?.company || "", 40)
+    .text(booking.client?.email || "", 40);
+
+  // ===== PAYMENT DETAILS =====
+  const detailsY = 230;
+
+  doc
+    .fontSize(11)
+    .font("Helvetica-Bold")
+    .text("PAYMENT DETAILS:", 40, detailsY);
+
+  doc
+    .fontSize(10)
+    .font("Helvetica")
+    .text(`Booking ID: ${booking.id}`, 40, detailsY + 25)
+    .text(`Amount Paid: ${money(payment?.amount)}`, 40, detailsY + 45)
+    .text(`Payment Method: ${payment?.method}`, 40, detailsY + 65)
+    .text(
+      `Transaction ID: ${payment?.transactionId || "N/A"}`,
+      40,
+      detailsY + 85
+    );
+
+  // ===== HOTEL INFO (nice professional touch) =====
+  doc
+    .text(`Hotel: ${booking.hotel?.name || "-"}`, 300, detailsY + 25)
+    .text(
+      `Check-in: ${shortDate(booking.checkIn)}`,
+      300,
+      detailsY + 45
+    )
+    .text(
+      `Check-out: ${shortDate(booking.checkOut)}`,
+      300,
+      detailsY + 65
+    );
+
+  // ===== FOOTER =====
+  doc
+    .fontSize(9)
+    .font("Helvetica")
+    .text(
+      "This receipt confirms full payment for the above booking.",
+      40,
+      760,
+      { align: "center", width: 500 }
+    );
 
   doc.end();
 };

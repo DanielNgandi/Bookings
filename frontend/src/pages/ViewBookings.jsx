@@ -2,6 +2,7 @@ import { useEffect, useState, useMemo } from "react";
 import API from "../service/api.js";
 import { FaCalendarAlt, FaUser, FaHotel, FaMoneyBill } from "react-icons/fa";
 import { Link } from "react-router-dom";
+import AddPayment from "./AddPayment"; 
 
 function ViewBookings() {
   const [bookings, setBookings] = useState([]);
@@ -10,8 +11,8 @@ function ViewBookings() {
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
   const [search, setSearch] = useState("");
   const [filterStatus, setFilterStatus] = useState("");
-
-  // ===== FORMAT CURRENCY (matches your invoice style) =====
+  const [selectedBooking, setSelectedBooking] = useState(null); 
+  // Format currency
   const formatMoney = (amount) =>
     `US$${Number(amount || 0).toLocaleString(undefined, {
       minimumFractionDigits: 2,
@@ -25,12 +26,14 @@ function ViewBookings() {
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
+  // Initial fetch
   useEffect(() => {
     setFadeIn(true);
     fetchBookings();
   }, []);
 
   const fetchBookings = async () => {
+    setLoading(true);
     try {
       const res = await API.get("/bookings");
       setBookings(res.data || []);
@@ -41,7 +44,7 @@ function ViewBookings() {
     }
   };
 
-  // Download helper
+  // Download files helper
   const downloadFile = async (url, filename) => {
     try {
       const res = await API.get(url, { responseType: "blob" });
@@ -59,7 +62,7 @@ function ViewBookings() {
     }
   };
 
-  // ===== FILTERED BOOKINGS (memoized for performance) =====
+  // Filtered bookings
   const filteredBookings = useMemo(() => {
     return bookings.filter((b) => {
       const clientName = b.client?.name?.toLowerCase() || "";
@@ -67,8 +70,7 @@ function ViewBookings() {
       const searchLower = search.toLowerCase();
 
       const matchesSearch =
-        clientName.includes(searchLower) ||
-        hotelName.includes(searchLower);
+        clientName.includes(searchLower) || hotelName.includes(searchLower);
 
       const matchesStatus =
         filterStatus === ""
@@ -81,7 +83,7 @@ function ViewBookings() {
     });
   }, [bookings, search, filterStatus]);
 
-  // ===== TOTALS =====
+  // Totals
   const totalRevenue = useMemo(
     () => bookings.reduce((acc, b) => acc + (b.totalAmount || 0), 0),
     [bookings]
@@ -105,9 +107,7 @@ function ViewBookings() {
         }}
       >
         <h2 style={styles.title}>All Bookings</h2>
-        <p style={styles.subtitle}>
-          Manage and monitor your tour reservations
-        </p>
+        <p style={styles.subtitle}>Manage and monitor your tour reservations</p>
 
         {/* SEARCH & FILTER */}
         <div style={styles.searchBar}>
@@ -129,19 +129,19 @@ function ViewBookings() {
           </select>
         </div>
 
-        {/* SUMMARY BAR */}
+        {/* SUMMARY */}
         <div style={styles.summaryBar}>
           <div>Bookings: {bookings.length}</div>
           <div>Revenue: {formatMoney(totalRevenue)}</div>
           <div>Pending: {formatMoney(pendingAmount)}</div>
         </div>
 
+        {/* BOOKINGS LIST */}
         {loading ? (
           <p style={styles.message}>Loading bookings...</p>
         ) : filteredBookings.length === 0 ? (
           <p style={styles.message}>No bookings found</p>
         ) : isMobile ? (
-          // ===== MOBILE =====
           <div style={styles.mobileList}>
             {filteredBookings.map((booking) => (
               <div key={booking.id} style={styles.mobileCard}>
@@ -155,9 +155,7 @@ function ViewBookings() {
                   <FaCalendarAlt /> {booking.checkIn?.slice(0, 10)} →{" "}
                   {booking.checkOut?.slice(0, 10)}
                 </div>
-                <div style={styles.mobileRow}>
-                  Rooms: {booking.rooms}
-                </div>
+                <div style={styles.mobileRow}>Rooms: {booking.rooms}</div>
                 <div style={styles.mobileRow}>
                   <FaMoneyBill /> {formatMoney(booking.totalAmount)}
                 </div>
@@ -165,15 +163,21 @@ function ViewBookings() {
                 <span
                   style={{
                     ...styles.statusBadge,
-                    backgroundColor: booking.payment
-                      ? "#2e7d32"
-                      : "#ef6c00",
+                    backgroundColor: booking.payment ? "#2e7d32" : "#ef6c00",
                   }}
                 >
                   {booking.payment ? "Paid" : "Pending"}
                 </span>
 
                 <div style={styles.mobileActions}>
+                  {!booking.payment && (
+                    <button
+                      style={styles.invoiceBtn}
+                      onClick={() => setSelectedBooking(booking)}
+                    >
+                      Pay
+                    </button>
+                  )}
                   <button
                     style={styles.invoiceBtn}
                     onClick={() =>
@@ -196,12 +200,24 @@ function ViewBookings() {
                   >
                     Voucher
                   </button>
+                  {booking.payment && booking.payment?.id && (
+                    <button
+                      style={styles.voucherBtn}
+                      onClick={() =>
+                        downloadFile(
+  `/bookings/${booking.id}/receipt`,
+  `receipt-${booking.id}.pdf`
+)
+                      }
+                    >
+                      Receipt
+                    </button>
+                  )}
                 </div>
               </div>
             ))}
           </div>
         ) : (
-          // ===== DESKTOP =====
           <div style={styles.tableWrapper}>
             <table style={styles.table}>
               <thead>
@@ -234,15 +250,21 @@ function ViewBookings() {
                       <span
                         style={{
                           ...styles.statusBadge,
-                          backgroundColor: booking.payment
-                            ? "#2e7d32"
-                            : "#ef6c00",
+                          backgroundColor: booking.payment ? "#2e7d32" : "#ef6c00",
                         }}
                       >
                         {booking.payment ? "Paid" : "Pending"}
                       </span>
                     </td>
                     <td style={styles.actionsCell}>
+                      {!booking.payment && (
+                        <button
+                          style={styles.invoiceBtn}
+                          onClick={() => setSelectedBooking(booking)}
+                        >
+                          Pay
+                        </button>
+                      )}
                       <button
                         style={styles.invoiceBtn}
                         onClick={() =>
@@ -265,11 +287,47 @@ function ViewBookings() {
                       >
                         Voucher
                       </button>
+                      {booking.payment && booking.payment?.id && (
+                        <button
+                          style={styles.voucherBtn}
+                          onClick={() =>
+                          downloadFile(
+  `/bookings/${booking.id}/receipt`,
+  `receipt-${booking.id}.pdf`
+)
+                          }
+                        >
+                          Receipt
+                        </button>
+                      )}
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
+          </div>
+        )}
+
+        {/* PAYMENT MODAL */}
+        {selectedBooking && (
+          <div style={styles.modalBackdrop}>
+            <div style={styles.modalContent}>
+              <h3>Pay for Booking #{selectedBooking.id}</h3>
+              <AddPayment
+                bookingId={selectedBooking.id}
+                totalAmount={selectedBooking.totalAmount}
+                onPaymentSuccess={() => {
+                  setSelectedBooking(null);
+                  fetchBookings();
+                }}
+              />
+              <button
+                style={styles.cancelBtn}
+                onClick={() => setSelectedBooking(null)}
+              >
+                Cancel
+              </button>
+            </div>
           </div>
         )}
 
@@ -283,7 +341,6 @@ function ViewBookings() {
 
 export default ViewBookings;
 
-// ===== STYLES =====
 const styles = {
   page: {
     minHeight: "100vh",
@@ -308,7 +365,6 @@ const styles = {
   },
   title: { fontSize: "2rem", fontWeight: "bold" },
   subtitle: { marginBottom: "20px", color: "#e0e0e0" },
-
   searchBar: {
     display: "flex",
     gap: "10px",
@@ -322,7 +378,6 @@ const styles = {
     border: "none",
     fontSize: "0.9rem",
   },
-
   summaryBar: {
     display: "flex",
     justifyContent: "space-around",
@@ -331,15 +386,9 @@ const styles = {
     flexWrap: "wrap",
     gap: "10px",
   },
-
   tableWrapper: { overflowX: "auto", marginTop: "20px" },
   table: { width: "100%", borderCollapse: "collapse", color: "#fff" },
-
-  row: {
-    borderBottom: "1px solid rgba(255,255,255,0.2)",
-    transition: "all 0.25s ease",
-  },
-
+  row: { borderBottom: "1px solid rgba(255,255,255,0.2)", transition: "all 0.25s ease" },
   statusBadge: {
     padding: "5px 12px",
     borderRadius: "999px",
@@ -347,9 +396,7 @@ const styles = {
     color: "#fff",
     fontSize: "0.8rem",
   },
-
-  actionsCell: { display: "flex", gap: "10px" },
-
+  actionsCell: { display: "flex", gap: "10px", flexWrap: "wrap" },
   invoiceBtn: {
     padding: "7px 12px",
     borderRadius: "8px",
@@ -370,7 +417,6 @@ const styles = {
     fontSize: "0.85rem",
     transition: "0.2s",
   },
-
   mobileList: {
     display: "flex",
     flexDirection: "column",
@@ -385,21 +431,38 @@ const styles = {
     backdropFilter: "blur(10px)",
     transition: "transform 0.25s ease",
   },
-  mobileRow: {
-    marginBottom: "6px",
-    fontSize: "0.95rem",
-  },
-  mobileActions: {
-    display: "flex",
-    gap: "8px",
-    marginTop: "12px",
-  },
-
+  mobileRow: { marginBottom: "6px", fontSize: "0.95rem" },
+  mobileActions: { display: "flex", gap: "8px", marginTop: "12px", flexWrap: "wrap" },
   message: { marginTop: "20px", fontWeight: "bold" },
-  link: {
-    display: "block",
-    marginTop: "25px",
+  link: { display: "block", marginTop: "25px", color: "#fff", textDecoration: "underline" },
+  modalBackdrop: {
+    position: "fixed",
+    top: 0,
+    left: 0,
+    width: "100%",
+    height: "100%",
+    backgroundColor: "rgba(0,0,0,0.5)",
+    display: "flex",
+    justifyContent: "center",
+    alignItems: "center",
+    zIndex: 999,
+  },
+  modalContent: {
+    backgroundColor: "#fff",
+    padding: "30px",
+    borderRadius: "12px",
+    minWidth: "320px",
+    maxWidth: "500px",
+    textAlign: "center",
+    color: "#000",
+  },
+  cancelBtn: {
+    marginTop: "15px",
+    padding: "8px 15px",
+    borderRadius: "8px",
+    border: "none",
+    backgroundColor: "#ef6c00",
     color: "#fff",
-    textDecoration: "underline",
+    cursor: "pointer",
   },
 };

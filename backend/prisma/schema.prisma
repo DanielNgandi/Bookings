@@ -43,7 +43,6 @@ model Hotel {
   location    String?
   email       String?
   phone       String?
-  mpesaNumber String?
   bankDetails String?
   createdAt   DateTime @default(now())
 

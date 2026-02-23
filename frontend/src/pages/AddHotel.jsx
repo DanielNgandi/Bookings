@@ -1,15 +1,15 @@
 import { useState, useEffect } from "react";
 import API from "../service/api.js";
-import { Link } from "react-router-dom";
-import { FaHotel, FaMapMarkerAlt, FaEnvelope, FaPhone, FaMoneyBill, FaUniversity } from "react-icons/fa";
+import { Link,useNavigate } from "react-router-dom";
+import { FaHotel, FaMapMarkerAlt, FaEnvelope, FaPhone, FaUniversity } from "react-icons/fa";
 
 function AddHotel() {
+  const navigate = useNavigate();
   const [formData, setFormData] = useState({
     name: "",
     location: "",
     email: "",
     phone: "",
-    mpesaNumber: "",
     bankDetails: "",
   });
 
@@ -34,9 +34,9 @@ function AddHotel() {
         location: "",
         email: "",
         phone: "",
-        mpesaNumber: "",
         bankDetails: "",
       });
+      setTimeout(() => navigate("/create-booking"), 1000);
     } catch (error) {
       console.error(error);
       setMessage("Error adding hotel ❌");
@@ -48,7 +48,6 @@ function AddHotel() {
     { name: "location", placeholder: "Location", icon: <FaMapMarkerAlt />, required: false },
     { name: "email", placeholder: "Email", icon: <FaEnvelope />, required: false },
     { name: "phone", placeholder: "Phone Number", icon: <FaPhone />, required: false },
-    { name: "mpesaNumber", placeholder: "Mpesa Number", icon: <FaMoneyBill />, required: false },
     { name: "bankDetails", placeholder: "Bank Details", icon: <FaUniversity />, required: false },
   ];
 
