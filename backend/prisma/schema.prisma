@@ -73,7 +73,7 @@ model Booking {
 
 items BookingItem[]
 
-  payment Payment?
+  payments Payment[]
   invoice Invoice?
   voucher Voucher?
   receipt Receipt?
@@ -97,15 +97,17 @@ model BookingItem {
 
 model Payment {
   id            Int      @id @default(autoincrement())
-  bookingId     Int      @unique
+  bookingId     Int
   amount        Float
   method        PaymentMethod
   transactionId String?
+  status        PaymentStatus @default(PENDING)
   paymentDate   DateTime @default(now())
 
-  booking Booking @relation(fields: [bookingId], references: [id])
-}
+  booking Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
 
+  @@index([bookingId])
+}
 model Invoice {
   id            Int      @id @default(autoincrement())
   bookingId     Int      @unique
@@ -141,7 +143,11 @@ enum BookingStatus {
   PAID
   CANCELLED
 }
-
+enum PaymentStatus {
+  PENDING
+  SUCCESS
+  FAILED
+}
 enum PaymentMethod {
   MPESA
   BANK

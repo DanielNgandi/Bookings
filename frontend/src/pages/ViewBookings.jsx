@@ -3,6 +3,7 @@ import API from "../service/api.js";
 import { FaCalendarAlt, FaUser, FaHotel, FaMoneyBill } from "react-icons/fa";
 import { Link } from "react-router-dom";
 import AddPayment from "./AddPayment"; 
+import safariBg from "../assets/safari-bg.png";
 
 function ViewBookings() {
   const [bookings, setBookings] = useState([]);
@@ -12,21 +13,19 @@ function ViewBookings() {
   const [search, setSearch] = useState("");
   const [filterStatus, setFilterStatus] = useState("");
   const [selectedBooking, setSelectedBooking] = useState(null); 
-  // Format currency
+
   const formatMoney = (amount) =>
     `US$${Number(amount || 0).toLocaleString(undefined, {
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
     })}`;
 
-  // Responsive check
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth < 768);
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
-  // Initial fetch
   useEffect(() => {
     setFadeIn(true);
     fetchBookings();
@@ -44,7 +43,6 @@ function ViewBookings() {
     }
   };
 
-  // Download files helper
   const downloadFile = async (url, filename) => {
     try {
       const res = await API.get(url, { responseType: "blob" });
@@ -62,28 +60,23 @@ function ViewBookings() {
     }
   };
 
-  // Filtered bookings
   const filteredBookings = useMemo(() => {
     return bookings.filter((b) => {
       const clientName = b.client?.name?.toLowerCase() || "";
       const hotelName = b.hotel?.name?.toLowerCase() || "";
       const searchLower = search.toLowerCase();
-
       const matchesSearch =
         clientName.includes(searchLower) || hotelName.includes(searchLower);
-
       const matchesStatus =
         filterStatus === ""
           ? true
           : filterStatus === "paid"
           ? !!b.payment
           : !b.payment;
-
       return matchesSearch && matchesStatus;
     });
   }, [bookings, search, filterStatus]);
 
-  // Totals
   const totalRevenue = useMemo(
     () => bookings.reduce((acc, b) => acc + (b.totalAmount || 0), 0),
     [bookings]
@@ -99,6 +92,10 @@ function ViewBookings() {
 
   return (
     <div style={styles.page}>
+      {/* Background Animation */}
+      <div style={styles.bgAnimation} />
+      <div style={styles.overlay} />
+
       <div
         style={{
           ...styles.card,
@@ -109,7 +106,6 @@ function ViewBookings() {
         <h2 style={styles.title}>All Bookings</h2>
         <p style={styles.subtitle}>Manage and monitor your tour reservations</p>
 
-        {/* SEARCH & FILTER */}
         <div style={styles.searchBar}>
           <input
             type="text"
@@ -129,14 +125,12 @@ function ViewBookings() {
           </select>
         </div>
 
-        {/* SUMMARY */}
         <div style={styles.summaryBar}>
           <div>Bookings: {bookings.length}</div>
           <div>Revenue: {formatMoney(totalRevenue)}</div>
           <div>Pending: {formatMoney(pendingAmount)}</div>
         </div>
 
-        {/* BOOKINGS LIST */}
         {loading ? (
           <p style={styles.message}>Loading bookings...</p>
         ) : filteredBookings.length === 0 ? (
@@ -152,14 +146,12 @@ function ViewBookings() {
                   <FaHotel /> {booking.hotel?.name || "—"}
                 </div>
                 <div style={styles.mobileRow}>
-                  <FaCalendarAlt /> {booking.checkIn?.slice(0, 10)} →{" "}
-                  {booking.checkOut?.slice(0, 10)}
+                  <FaCalendarAlt /> {booking.checkIn?.slice(0, 10)} → {booking.checkOut?.slice(0, 10)}
                 </div>
                 <div style={styles.mobileRow}>Rooms: {booking.rooms}</div>
                 <div style={styles.mobileRow}>
                   <FaMoneyBill /> {formatMoney(booking.totalAmount)}
                 </div>
-
                 <span
                   style={{
                     ...styles.statusBadge,
@@ -168,7 +160,6 @@ function ViewBookings() {
                 >
                   {booking.payment ? "Paid" : "Pending"}
                 </span>
-
                 <div style={styles.mobileActions}>
                   {!booking.payment && (
                     <button
@@ -200,14 +191,14 @@ function ViewBookings() {
                   >
                     Voucher
                   </button>
-                  {booking.payment && booking.payment?.id && (
+                  {booking.payment?.id && (
                     <button
                       style={styles.voucherBtn}
                       onClick={() =>
                         downloadFile(
-  `/bookings/${booking.id}/receipt`,
-  `receipt-${booking.id}.pdf`
-)
+                          `/bookings/${booking.id}/receipt`,
+                          `receipt-${booking.id}.pdf`
+                        )
                       }
                     >
                       Receipt
@@ -234,16 +225,9 @@ function ViewBookings() {
               <tbody>
                 {filteredBookings.map((booking) => (
                   <tr key={booking.id} style={styles.row}>
-                    <td>
-                      <FaUser /> {booking.client?.name || "—"}
-                    </td>
-                    <td>
-                      <FaHotel /> {booking.hotel?.name || "—"}
-                    </td>
-                    <td>
-                      <FaCalendarAlt /> {booking.checkIn?.slice(0, 10)} →{" "}
-                      {booking.checkOut?.slice(0, 10)}
-                    </td>
+                    <td><FaUser /> {booking.client?.name || "—"}</td>
+                    <td><FaHotel /> {booking.hotel?.name || "—"}</td>
+                    <td><FaCalendarAlt /> {booking.checkIn?.slice(0, 10)} → {booking.checkOut?.slice(0, 10)}</td>
                     <td>{booking.rooms}</td>
                     <td>{formatMoney(booking.totalAmount)}</td>
                     <td>
@@ -287,14 +271,14 @@ function ViewBookings() {
                       >
                         Voucher
                       </button>
-                      {booking.payment && booking.payment?.id && (
+                      {booking.payment?.id && (
                         <button
                           style={styles.voucherBtn}
                           onClick={() =>
-                          downloadFile(
-  `/bookings/${booking.id}/receipt`,
-  `receipt-${booking.id}.pdf`
-)
+                            downloadFile(
+                              `/bookings/${booking.id}/receipt`,
+                              `receipt-${booking.id}.pdf`
+                            )
                           }
                         >
                           Receipt
@@ -308,7 +292,6 @@ function ViewBookings() {
           </div>
         )}
 
-        {/* PAYMENT MODAL */}
         {selectedBooking && (
           <div style={styles.modalBackdrop}>
             <div style={styles.modalContent}>
@@ -335,6 +318,16 @@ function ViewBookings() {
           ← Back to Dashboard
         </Link>
       </div>
+
+      <style>
+        {`
+          @keyframes safariMove {
+            0% { transform: scale(1.1) translateX(0px); }
+            50% { transform: scale(1.15) translateX(-25px); }
+            100% { transform: scale(1.1) translateX(0px); }
+          }
+        `}
+      </style>
     </div>
   );
 }
@@ -343,19 +336,39 @@ export default ViewBookings;
 
 const styles = {
   page: {
+    position: "relative",
     minHeight: "100vh",
     display: "flex",
     justifyContent: "center",
     alignItems: "center",
-    background: "linear-gradient(135deg, #1e88e5, #42a5f5, #90caf9)",
     padding: "20px",
     fontFamily: "Arial, sans-serif",
+    overflow: "hidden",
+  },
+  bgAnimation: {
+    position: "absolute",
+    inset: 0,
+    backgroundImage: `url(${safariBg})`,
+    backgroundSize: "cover",
+    backgroundPosition: "center",
+    backgroundRepeat: "no-repeat",
+    animation: "safariMove 25s ease-in-out infinite",
+    zIndex: 0,
+  },
+  overlay: {
+    position: "absolute",
+    inset: 0,
+    background: "linear-gradient(rgba(0,0,0,0.55), rgba(0,0,0,0.65))",
+    zIndex: 1,
   },
   card: {
+    position: "relative",
+    zIndex: 2,
     width: "100%",
     maxWidth: "1100px",
-    background: "rgba(255,255,255,0.1)",
-    backdropFilter: "blur(15px)",
+    background: "rgba(255,255,255,0.12)",
+    backdropFilter: "blur(14px)",
+    WebkitBackdropFilter: "blur(14px)",
     borderRadius: "16px",
     padding: "40px 30px",
     boxShadow: "0 10px 35px rgba(0,0,0,0.25)",
@@ -417,12 +430,7 @@ const styles = {
     fontSize: "0.85rem",
     transition: "0.2s",
   },
-  mobileList: {
-    display: "flex",
-    flexDirection: "column",
-    gap: "15px",
-    marginTop: "20px",
-  },
+  mobileList: { display: "flex", flexDirection: "column", gap: "15px", marginTop: "20px" },
   mobileCard: {
     background: "rgba(255,255,255,0.15)",
     borderRadius: "14px",

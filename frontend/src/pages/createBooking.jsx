@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import API from "../service/api.js";
 import { Link, useNavigate } from "react-router-dom";
 import { FaUser, FaHotel, FaCalendarAlt } from "react-icons/fa";
+import safariBg from "../assets/safari-bg.png";
 
 function AddBooking() {
   const navigate = useNavigate();
@@ -11,10 +12,10 @@ function AddBooking() {
     hotelId: "",
     checkIn: "",
     checkOut: "",
-    adults: 2,
-    kids: 3,
-    costAdults: 23,
-    costKids: 21,
+    adults: "",
+    kids: "",
+    costAdults: "",
+    costKids: "",
   });
 
   const [clients, setClients] = useState([]);
@@ -28,7 +29,6 @@ function AddBooking() {
     fetchHotels();
   }, []);
 
-  // ================= FETCH =================
   const fetchClients = async () => {
     try {
       const res = await API.get("/clients");
@@ -47,77 +47,59 @@ function AddBooking() {
     }
   };
 
-  // ================= HANDLERS =================
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  // ================= NIGHTS CALC =================
   const getNumberOfDays = () => {
     if (!formData.checkIn || !formData.checkOut) return 0;
-
     const start = new Date(formData.checkIn);
     const end = new Date(formData.checkOut);
-
     const diffTime = end - start;
     const days = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-
     return days > 0 ? days : 0;
   };
 
-  // ================= ITEMS GENERATOR (🔥 MAIN FIX) =================
   const generateItems = () => {
     const days = getNumberOfDays();
     if (!days) return [];
 
     const rows = [];
 
-    // Adults row
     if (Number(formData.adults) > 0) {
       rows.push({
         date: formData.checkIn,
         service: "Adults Safari",
         pax: Number(formData.adults),
         costPP: Number(formData.costAdults),
-        amount:
-          Number(formData.adults) *
-          Number(formData.costAdults) *
-          days,
+        amount: Number(formData.adults) * Number(formData.costAdults) * days,
       });
     }
 
-    // Kids row
     if (Number(formData.kids) > 0) {
       rows.push({
         date: formData.checkIn,
         service: "Kids Safari",
         pax: Number(formData.kids),
         costPP: Number(formData.costKids),
-        amount:
-          Number(formData.kids) *
-          Number(formData.costKids) *
-          days,
+        amount: Number(formData.kids) * Number(formData.costKids) * days,
       });
     }
 
     return rows;
   };
 
-  // ================= TOTAL PREVIEW =================
   const calculateTotal = () => {
     const items = generateItems();
     return items.reduce((sum, i) => sum + i.amount, 0);
   };
 
-  // ================= SUBMIT =================
   const handleSubmit = async (e) => {
     e.preventDefault();
 
     try {
       const items = generateItems();
-      if (!items.length) {
-        return setMessage("Please select valid dates");
-      }
+      if (!items.length) return setMessage("Please select valid dates");
 
       await API.post("/bookings", {
         clientId: formData.clientId,
@@ -138,9 +120,11 @@ function AddBooking() {
   const nights = getNumberOfDays();
   const totalAmount = calculateTotal();
 
-  // ================= UI =================
   return (
     <div style={styles.page}>
+      <div style={styles.bgAnimation} />
+      <div style={styles.overlay} />
+
       <div
         style={{
           ...styles.card,
@@ -154,7 +138,6 @@ function AddBooking() {
         </p>
 
         <form onSubmit={handleSubmit} style={styles.form}>
-          {/* CLIENT */}
           <div style={styles.inputGroup}>
             <FaUser />
             <select
@@ -173,7 +156,6 @@ function AddBooking() {
             </select>
           </div>
 
-          {/* HOTEL */}
           <div style={styles.inputGroup}>
             <FaHotel />
             <select
@@ -192,7 +174,6 @@ function AddBooking() {
             </select>
           </div>
 
-          {/* DATES */}
           <div style={styles.inputGroup}>
             <FaCalendarAlt />
             <input
@@ -217,7 +198,7 @@ function AddBooking() {
             />
           </div>
 
-          {/* PAX */}
+          {/* 🔹 Number inputs with visible placeholders */}
           <div style={styles.inputGroup}>
             <input
               type="number"
@@ -237,7 +218,6 @@ function AddBooking() {
             />
           </div>
 
-          {/* COST */}
           <div style={styles.inputGroup}>
             <input
               type="number"
@@ -257,7 +237,6 @@ function AddBooking() {
             />
           </div>
 
-          {/* LIVE SUMMARY */}
           <div style={styles.summary}>
             <p>🛏 Nights: <b>{nights}</b></p>
             <p>💰 Total: <b>US${totalAmount.toLocaleString()}</b></p>
@@ -274,55 +253,98 @@ function AddBooking() {
           ← Back to Home
         </Link>
       </div>
+
+      <style>
+        {`
+          @keyframes safariMove {
+            0% { transform: scale(1.1) translateX(0px); }
+            50% { transform: scale(1.15) translateX(-25px); }
+            100% { transform: scale(1.1) translateX(0px); }
+          }
+
+          /* Placeholder color */
+          input::placeholder {
+            color: #000; /* black placeholder */
+            opacity: 1;
+          }
+        `}
+      </style>
     </div>
   );
 }
 
 export default AddBooking;
 
-// ================= STYLES =================
 const styles = {
   page: {
+    position: "relative",
     minHeight: "100vh",
     display: "flex",
     justifyContent: "center",
     alignItems: "center",
-    background:
-      "linear-gradient(135deg, #1e88e5, #42a5f5, #90caf9)",
     padding: "20px",
     fontFamily: "Arial, sans-serif",
+    overflow: "hidden",
   },
+
+  bgAnimation: {
+    position: "absolute",
+    inset: 0,
+    backgroundImage: `url(${safariBg})`,
+    backgroundSize: "cover",
+    backgroundPosition: "center",
+    backgroundRepeat: "no-repeat",
+    animation: "safariMove 25s ease-in-out infinite",
+    zIndex: 0,
+  },
+
+  overlay: {
+    position: "absolute",
+    inset: 0,
+    background: "linear-gradient(rgba(0,0,0,0.55), rgba(0,0,0,0.65))",
+    zIndex: 1,
+  },
+
   card: {
+    position: "relative",
+    zIndex: 2,
     width: "100%",
     maxWidth: "700px",
-    background: "rgba(255,255,255,0.1)",
-    backdropFilter: "blur(15px)",
+    background: "rgba(255,255,255,0.12)",
+    backdropFilter: "blur(14px)",
+    WebkitBackdropFilter: "blur(14px)",
     borderRadius: "15px",
     padding: "40px 30px",
-    boxShadow: "0 8px 30px rgba(0,0,0,0.2)",
+    boxShadow: "0 8px 30px rgba(0,0,0,0.45)",
     textAlign: "center",
     color: "#fff",
     transition: "all 0.5s ease",
   },
+
   title: { fontSize: "1.8rem", fontWeight: "bold" },
   subtitle: { marginBottom: "25px", color: "#e0e0e0" },
+
   form: { display: "flex", flexDirection: "column", gap: "15px" },
+
   inputGroup: { display: "flex", gap: "10px", flexWrap: "wrap" },
+
   input: {
     flex: 1,
     border: "none",
     outline: "none",
-    background: "rgba(255,255,255,0.15)",
+    background: "rgba(255,255,255,0.18)",
     borderRadius: "8px",
     padding: "8px 10px",
     color: "#fff",
   },
+
   summary: {
-    background: "rgba(0,0,0,0.25)",
+    background: "rgba(0,0,0,0.35)",
     padding: "12px",
     borderRadius: "8px",
     fontWeight: "bold",
   },
+
   button: {
     padding: "10px 15px",
     background: "linear-gradient(90deg, #1e88e5, #42a5f5)",
@@ -332,7 +354,9 @@ const styles = {
     borderRadius: "8px",
     cursor: "pointer",
   },
+
   message: { marginTop: "15px", fontWeight: "bold" },
+
   link: {
     display: "block",
     marginTop: "20px",

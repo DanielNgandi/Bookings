@@ -69,7 +69,6 @@ function UnpaidBookings() {
               <td>{b.totalAmount.toFixed(2)}</td>
               <td>{b.status}</td>
               <td>
-                {/* Disable button if already paid */}
                 <button
                   onClick={() => setSelectedBooking(b)}
                   disabled={b.status !== "PENDING"}
@@ -81,18 +80,36 @@ function UnpaidBookings() {
           ))}
         </tbody>
       </table>
+     {/* Payment Form Modal */}
+{selectedBooking && (
+  <div style={modalStyles.overlay}>
+    <div style={modalStyles.modalCard}>
+      
+      {/* HEADER WITH CANCEL — ALWAYS VISIBLE */}
+      <div style={modalStyles.modalHeader}>
+        <h3 style={{ margin: 0 }}>
+          Pay for Booking #{selectedBooking.id}
+        </h3>
 
-      {/* Payment Form Modal */}
-      {selectedBooking && (
-        <div className="modal">
-          <h3>Pay for Booking #{selectedBooking.id}</h3>
-          <AddPayment
-            bookingId={selectedBooking.id}
-            onPaymentSuccess={handlePaymentSuccess}
-          />
-          <button onClick={() => setSelectedBooking(null)}>Cancel</button>
-        </div>
-      )}
+        <button
+          onClick={() => setSelectedBooking(null)}
+          style={modalStyles.closeBtn}
+        >
+          ✕
+        </button>
+      </div>
+
+      {/* PAYMENT FORM */}
+      <AddPayment
+        bookingId={selectedBooking.id}
+        totalAmount={selectedBooking.totalAmount}
+        onPaymentSuccess={handlePaymentSuccess}
+      />
+    </div>
+  </div>
+)}
+      
+      
     </div>
   );
 }

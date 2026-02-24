@@ -64,8 +64,6 @@ function AddPayment({ bookingId, totalAmount = 0, onPaymentSuccess }) {
           <h2 style={styles.title}>💳 Record Payment</h2>
           <p style={styles.subtitle}>Secure booking payment</p>
         </div>
-
-        {/* SUMMARY */}
         <div style={styles.summaryBox}>
           <div style={styles.summaryRow}>
             <span>Total Cost</span>
@@ -101,7 +99,6 @@ function AddPayment({ bookingId, totalAmount = 0, onPaymentSuccess }) {
             >
               <option value="BANK">🏦 Bank Transfer</option>
               <option value="MPESA">📱 M-Pesa</option>
-              <option value="CASH">💵 Cash</option>
             </select>
           </div>
 
@@ -151,21 +148,16 @@ function AddPayment({ bookingId, totalAmount = 0, onPaymentSuccess }) {
 
 export default AddPayment;
 
-// ===== PREMIUM STYLES =====
 const styles = {
   wrapper: {
-    minHeight: "100vh",
-    display: "flex",
-    justifyContent: "center",
-    alignItems: "center",
-    background:
-      "linear-gradient(135deg, #f0fdf4 0%, #f8fafc 50%, #eef2ff 100%)",
-    padding: 20,
-  },
+  width: "100%",
+  display: "flex",
+  justifyContent: "center",
+},
 
   card: {
     width: "100%",
-    maxWidth: 460,
+    maxWidth: 480,
     background: "rgba(255,255,255,0.9)",
     backdropFilter: "blur(10px)",
     padding: 30,

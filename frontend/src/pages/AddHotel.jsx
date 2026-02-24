@@ -1,7 +1,14 @@
 import { useState, useEffect } from "react";
 import API from "../service/api.js";
-import { Link,useNavigate } from "react-router-dom";
-import { FaHotel, FaMapMarkerAlt, FaEnvelope, FaPhone, FaUniversity } from "react-icons/fa";
+import { Link, useNavigate } from "react-router-dom";
+import {
+  FaHotel,
+  FaMapMarkerAlt,
+  FaEnvelope,
+  FaPhone,
+  FaUniversity,
+} from "react-icons/fa";
+import safariBg from "../assets/safari-bg.png";
 
 function AddHotel() {
   const navigate = useNavigate();
@@ -53,6 +60,12 @@ function AddHotel() {
 
   return (
     <div style={styles.page}>
+      {/* 🎬 Animated background */}
+      <div style={styles.bgAnimation} />
+
+      {/* 🌑 Dark overlay */}
+      <div style={styles.overlay} />
+
       <div
         style={{
           ...styles.card,
@@ -75,8 +88,14 @@ function AddHotel() {
                 onChange={handleChange}
                 style={styles.input}
                 required={field.required}
-                onFocus={(e) => (e.target.parentNode.style.boxShadow = "0 0 12px rgba(255,255,255,0.6)")}
-                onBlur={(e) => (e.target.parentNode.style.boxShadow = "0 0 6px rgba(255,255,255,0.2)")}
+                onFocus={(e) =>
+                  (e.target.parentNode.style.boxShadow =
+                    "0 0 12px rgba(255,255,255,0.6)")
+                }
+                onBlur={(e) =>
+                  (e.target.parentNode.style.boxShadow =
+                    "0 0 6px rgba(255,255,255,0.2)")
+                }
               />
             </div>
           ))}
@@ -97,6 +116,17 @@ function AddHotel() {
           ← Back to Home
         </Link>
       </div>
+
+      {/* 🔥 Background animation keyframes */}
+      <style>
+        {`
+          @keyframes safariMove {
+            0% { transform: scale(1.1) translateX(0px); }
+            50% { transform: scale(1.15) translateX(-25px); }
+            100% { transform: scale(1.1) translateX(0px); }
+          }
+        `}
+      </style>
     </div>
   );
 }
@@ -105,23 +135,45 @@ export default AddHotel;
 
 const styles = {
   page: {
+    position: "relative",
     minHeight: "100vh",
     display: "flex",
     justifyContent: "center",
     alignItems: "center",
-    background: "linear-gradient(135deg, #1e88e5, #42a5f5, #90caf9)",
     padding: "20px",
     fontFamily: "Arial, sans-serif",
+    overflow: "hidden",
+  },
+
+  bgAnimation: {
+    position: "absolute",
+    inset: 0,
+    backgroundImage: `url(${safariBg})`,
+    backgroundSize: "cover",
+    backgroundPosition: "center",
+    backgroundRepeat: "no-repeat",
+    animation: "safariMove 25s ease-in-out infinite",
+    zIndex: 0,
+  },
+
+  overlay: {
+    position: "absolute",
+    inset: 0,
+    background: "linear-gradient(rgba(0,0,0,0.55), rgba(0,0,0,0.65))",
+    zIndex: 1,
   },
 
   card: {
+    position: "relative",
+    zIndex: 2,
     width: "100%",
     maxWidth: "500px",
-    background: "rgba(255,255,255,0.1)",
-    backdropFilter: "blur(15px)",
+    background: "rgba(255,255,255,0.12)",
+    backdropFilter: "blur(14px)",
+    WebkitBackdropFilter: "blur(14px)",
     borderRadius: "15px",
     padding: "40px 30px",
-    boxShadow: "0 8px 30px rgba(0,0,0,0.2)",
+    boxShadow: "0 8px 30px rgba(0,0,0,0.45)",
     textAlign: "center",
     color: "#fff",
     transition: "all 0.5s ease",
@@ -147,7 +199,7 @@ const styles = {
   inputGroup: {
     display: "flex",
     alignItems: "center",
-    background: "rgba(255,255,255,0.15)",
+    background: "rgba(255,255,255,0.18)",
     borderRadius: "8px",
     padding: "10px 12px",
     transition: "0.3s",
@@ -158,7 +210,6 @@ const styles = {
     marginRight: "10px",
     color: "#ffffff",
     fontSize: "1.2rem",
-    transition: "0.3s",
   },
 
   input: {

@@ -6,7 +6,6 @@ import clientRoutes from './Routers/clientRoutes.js';
 import hotelRoutes from './Routers/hotelRoutes.js';
 import bookingRoutes from './Routers/bookingRoutes.js';
 import paymentRoutes from './Routers/paymentRoutes.js';
-
 import cors from 'cors';
 
 dotenv.config();
