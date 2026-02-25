@@ -182,7 +182,7 @@ export const getAllBookings = async (req, res) => {
       include: {
         client: true,
         hotel: true,
-        payment: true,   // singular
+        payments: true,   // singular
         invoice: true,
         voucher: true,
         receipt: true
@@ -213,7 +213,7 @@ export const getSingleBooking = async (req, res) => {
       include: {
         client: true,
         hotel: true,
-        payment: true, // singular
+        payments: true, // singular
         invoice: true,
         voucher: true,
         receipt: true

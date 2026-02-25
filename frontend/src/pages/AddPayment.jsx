@@ -5,6 +5,7 @@ function AddPayment({ bookingId, totalAmount = 0, onPaymentSuccess }) {
   const [amount, setAmount] = useState(0);
   const [method, setMethod] = useState("BANK");
   const [transactionId, setTransactionId] = useState("");
+  const [remainingBalance, setRemainingBalance] = useState(totalAmount);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [receiptLink, setReceiptLink] = useState("");
@@ -13,12 +14,6 @@ function AddPayment({ bookingId, totalAmount = 0, onPaymentSuccess }) {
   useEffect(() => {
     setAmount(totalAmount || 0);
   }, [totalAmount]);
-
-  // ✅ remaining balance calculation
-  const balance = Math.max(
-    (parseFloat(totalAmount) || 0) - (parseFloat(amount) || 0),
-    0
-  );
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -47,8 +42,8 @@ function AddPayment({ bookingId, totalAmount = 0, onPaymentSuccess }) {
       });
 
       // ✅ receipt link corrected
+      setRemainingBalance(res.data.remainingBalance);
       setReceiptLink(`/bookings/${bookingId}/receipt`);
-
       onPaymentSuccess?.();
     } catch (err) {
       setError(err.response?.data?.message || "Payment failed. Try again.");
@@ -72,7 +67,7 @@ function AddPayment({ bookingId, totalAmount = 0, onPaymentSuccess }) {
           <div style={styles.summaryRow}>
             <span>Remaining Balance</span>
             <strong style={{ color: "#dc2626" }}>
-              ${balance.toFixed(2)}
+              ${Number(remainingBalance).toFixed(2)}
             </strong>
           </div>
         </div>
