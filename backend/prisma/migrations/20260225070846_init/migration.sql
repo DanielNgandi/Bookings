@@ -118,12 +118,14 @@ CREATE TABLE `Voucher` (
 CREATE TABLE `Receipt` (
     `id` INTEGER NOT NULL AUTO_INCREMENT,
     `bookingId` INTEGER NOT NULL,
+    `paymentId` INTEGER NOT NULL,
     `receiptNumber` VARCHAR(191) NOT NULL,
     `pdfPath` VARCHAR(191) NULL,
     `createdAt` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
 
-    UNIQUE INDEX `Receipt_bookingId_key`(`bookingId`),
+    UNIQUE INDEX `Receipt_paymentId_key`(`paymentId`),
     UNIQUE INDEX `Receipt_receiptNumber_key`(`receiptNumber`),
+    INDEX `Receipt_bookingId_idx`(`bookingId`),
     PRIMARY KEY (`id`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
@@ -156,3 +158,6 @@ ALTER TABLE `Voucher` ADD CONSTRAINT `Voucher_bookingId_fkey` FOREIGN KEY (`book
 
 -- AddForeignKey
 ALTER TABLE `Receipt` ADD CONSTRAINT `Receipt_bookingId_fkey` FOREIGN KEY (`bookingId`) REFERENCES `Booking`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE `Receipt` ADD CONSTRAINT `Receipt_paymentId_fkey` FOREIGN KEY (`paymentId`) REFERENCES `Payment`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;

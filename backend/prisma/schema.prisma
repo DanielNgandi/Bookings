@@ -76,7 +76,7 @@ items BookingItem[]
   payments Payment[]
   invoice Invoice?
   voucher Voucher?
-  receipt Receipt?
+  receipts Receipt[]
 }
 
 model BookingItem {
@@ -105,7 +105,7 @@ model Payment {
   paymentDate   DateTime @default(now())
 
   booking Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
-
+receipt Receipt? 
   @@index([bookingId])
 }
 model Invoice {
@@ -130,12 +130,15 @@ model Voucher {
 
 model Receipt {
   id            Int      @id @default(autoincrement())
-  bookingId     Int      @unique
+  bookingId     Int  
+  paymentId     Int      @unique 
   receiptNumber String   @unique
   pdfPath       String?
   createdAt     DateTime @default(now())
 
   booking Booking @relation(fields: [bookingId], references: [id])
+  payment Payment @relation(fields: [paymentId], references: [id])
+@@index([bookingId])
 }
 
 enum BookingStatus {

@@ -1,52 +1,113 @@
 import { useState, useEffect } from "react";
 import API from "../service/api.js";
+import Swal from "sweetalert2";
 
 function AddPayment({ bookingId, totalAmount = 0, onPaymentSuccess }) {
-  const [amount, setAmount] = useState(0);
+  const [amount, setAmount] = useState("");
   const [method, setMethod] = useState("BANK");
   const [transactionId, setTransactionId] = useState("");
   const [remainingBalance, setRemainingBalance] = useState(totalAmount);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [receiptLink, setReceiptLink] = useState("");
+  const [isPaidOff, setIsPaidOff] = useState(false);
 
-  // ✅ AUTO-FILL amount when modal opens
+  // ✅ keep balance in sync with parent
   useEffect(() => {
-    setAmount(totalAmount || 0);
+    setRemainingBalance(Number(totalAmount) || 0);
   }, [totalAmount]);
+
+  // ✅ auto-fill amount when balance changes
+  useEffect(() => {
+    if (remainingBalance <= 0) {
+      setIsPaidOff(true);
+      setAmount("0");
+    } else {
+      setIsPaidOff(false);
+      setAmount(Number(remainingBalance).toFixed(2));
+    }
+  }, [remainingBalance]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
 
+    if (isPaidOff) {
+      setError("This booking is already fully paid.");
+      return;
+    }
+
     const payAmount = parseFloat(amount);
 
-    if (!payAmount || payAmount <= 0) {
+    // ✅ validation
+    if (isNaN(payAmount) || payAmount <= 0) {
       setError("Please enter a valid payment amount.");
       return;
     }
 
-    if (payAmount > totalAmount) {
-      setError("Amount cannot exceed total booking cost.");
+    if (payAmount > remainingBalance) {
+      setError(
+        `Amount exceeds remaining balance (${remainingBalance.toFixed(2)})`
+      );
       return;
     }
 
     setLoading(true);
 
     try {
-      await API.post("/payments", {
+      const res = await API.post("/payments", {
         bookingId,
         amount: payAmount,
         method,
-        transactionId: transactionId || null,
+        transactionId: transactionId?.trim() || null,
       });
 
-      // ✅ receipt link corrected
-      setRemainingBalance(res.data.remainingBalance);
-      setReceiptLink(`/bookings/${bookingId}/receipt`);
+      // ✅ update balance from backend safely
+      const newBalance = Number(res.data.remainingBalance ?? 0);
+      setRemainingBalance(newBalance);
+      Swal.fire({
+  icon: "success",
+  title: "Payment recorded",
+  text: "Receipt generated successfully",
+  confirmButtonColor: "#16a34a",
+});
+
+      // ✅ receipt link (safe fallback)
+      if (res.data.receipt?.id) {
+        setReceiptLink(`/receipts/${res.data.receipt.id}`);
+      } else {
+        setReceiptLink(`/bookings/${bookingId}/receipt`);
+      }
+
       onPaymentSuccess?.();
     } catch (err) {
-      setError(err.response?.data?.message || "Payment failed. Try again.");
+  const data = err.response?.data;
+
+  // ⭐ OVERPAYMENT POPUP
+  if (data?.type === "OVERPAYMENT") {
+    Swal.fire({
+      icon: "warning",
+      title: "Overpayment detected",
+      text: data.message,
+      confirmButtonColor: "#dc2626",
+    });
+
+    // sync remaining balance from backend
+    if (typeof data.remainingBalance === "number") {
+      setRemainingBalance(data.remainingBalance);
+    }
+
+    return;
+  }
+
+  // ⭐ other errors
+  Swal.fire({
+    icon: "error",
+    title: "Payment Failed",
+    text: data?.message || "Something went wrong",
+    confirmButtonColor: "#dc2626",
+  });
+
     } finally {
       setLoading(false);
     }
@@ -59,6 +120,7 @@ function AddPayment({ bookingId, totalAmount = 0, onPaymentSuccess }) {
           <h2 style={styles.title}>💳 Record Payment</h2>
           <p style={styles.subtitle}>Secure booking payment</p>
         </div>
+
         <div style={styles.summaryBox}>
           <div style={styles.summaryRow}>
             <span>Total Cost</span>
@@ -66,11 +128,21 @@ function AddPayment({ bookingId, totalAmount = 0, onPaymentSuccess }) {
           </div>
           <div style={styles.summaryRow}>
             <span>Remaining Balance</span>
-            <strong style={{ color: "#dc2626" }}>
+            <strong
+              style={{
+                color: remainingBalance <= 0 ? "#16a34a" : "#dc2626",
+              }}
+            >
               ${Number(remainingBalance).toFixed(2)}
             </strong>
           </div>
         </div>
+
+        {isPaidOff && (
+          <div style={styles.successBox}>
+            ✅ This booking is fully paid
+          </div>
+        )}
 
         <form onSubmit={handleSubmit}>
           <div style={styles.field}>
@@ -79,7 +151,10 @@ function AddPayment({ bookingId, totalAmount = 0, onPaymentSuccess }) {
               style={styles.input}
               type="number"
               step="0.01"
+              min="0"
+              max={remainingBalance}
               value={amount}
+              disabled={isPaidOff}
               onChange={(e) => setAmount(e.target.value)}
               required
             />
@@ -90,6 +165,7 @@ function AddPayment({ bookingId, totalAmount = 0, onPaymentSuccess }) {
             <select
               style={styles.input}
               value={method}
+              disabled={isPaidOff}
               onChange={(e) => setMethod(e.target.value)}
             >
               <option value="BANK">🏦 Bank Transfer</option>
@@ -103,6 +179,7 @@ function AddPayment({ bookingId, totalAmount = 0, onPaymentSuccess }) {
               style={styles.input}
               type="text"
               value={transactionId}
+              disabled={isPaidOff}
               onChange={(e) => setTransactionId(e.target.value)}
               placeholder="Optional reference"
             />
@@ -112,20 +189,26 @@ function AddPayment({ bookingId, totalAmount = 0, onPaymentSuccess }) {
 
           <button
             type="submit"
-            disabled={loading}
+            disabled={loading || isPaidOff}
             style={{
               ...styles.payBtn,
-              ...(loading ? styles.btnDisabled : {}),
+              ...(loading || isPaidOff ? styles.btnDisabled : {}),
             }}
           >
-            {loading ? "Processing Payment..." : "Confirm Payment"}
+            {isPaidOff
+              ? "Fully Paid"
+              : loading
+              ? "Processing Payment..."
+              : "Confirm Payment"}
           </button>
         </form>
 
         {receiptLink && (
           <div style={styles.successBox}>
             <div style={styles.successIcon}>✅</div>
-            <p style={{ marginBottom: 10 }}>Payment recorded successfully</p>
+            <p style={{ marginBottom: 10 }}>
+              Payment recorded successfully
+            </p>
             <a
               href={receiptLink}
               target="_blank"
@@ -142,7 +225,6 @@ function AddPayment({ bookingId, totalAmount = 0, onPaymentSuccess }) {
 }
 
 export default AddPayment;
-
 const styles = {
   wrapper: {
   width: "100%",

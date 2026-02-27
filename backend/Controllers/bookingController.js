@@ -17,7 +17,7 @@ export const downloadInvoice = async (req, res) => {
         hotel: true,
         invoice: true,
         items: true, // ⭐ VERY IMPORTANT
-        payment: true,
+        payments: true,
       },
     });
 
@@ -64,36 +64,46 @@ export const downloadReceipt = async (req, res) => {
       return res.status(400).json({ message: "Invalid booking id" });
     }
 
-    // ✅ secure ownership check
     const booking = await prisma.booking.findFirst({
       where: {
         id: bookingId,
-        userId: req.user.id
+        userId: req.user.id,
       },
       include: {
         client: true,
         hotel: true,
-        payment: true,
-        receipt: true
-      }
+        payments: true,
+        receipts: true,
+      },
     });
 
+    // ✅ IMPORTANT — check booking first
     if (!booking) {
       return res.status(404).json({ message: "Booking not found" });
     }
 
-    if (!booking.payment || !booking.receipt) {
-      return res.status(400).json({ message: "Receipt not available yet" });
+    // ✅ latest SUCCESS payment
+    const latestPayment = booking.payments
+      .filter((p) => p.status === "SUCCESS")
+      .sort(
+        (a, b) =>
+          new Date(b.paymentDate) - new Date(a.paymentDate)
+      )[0];
+
+    if (!latestPayment) {
+      return res.status(400).json({
+        message: "No successful payment yet",
+      });
     }
 
-    // ✅ generate PDF
-    return generateReceipt(
-      res,
-      booking,
-      booking.payment,
-      booking.receipt
-    );
+    // ✅ latest receipt (optional but preferred)
+    const latestReceipt =
+      booking.receipts?.sort(
+        (a, b) =>
+          new Date(b.createdAt) - new Date(a.createdAt)
+      )[0] || null;
 
+    return generateReceipt(res, booking, latestPayment, latestReceipt);
   } catch (error) {
     console.error("Receipt download error:", error);
     res.status(500).json({ message: "Server error generating receipt" });
@@ -177,23 +187,44 @@ export const getAllBookings = async (req, res) => {
   try {
     const bookings = await prisma.booking.findMany({
       where: {
-        userId: req.user.id
+        userId: req.user.id,
       },
       include: {
         client: true,
         hotel: true,
-        payments: true,   // singular
+        payments: true,
         invoice: true,
         voucher: true,
-        receipt: true
+        receipts: true,
       },
       orderBy: {
-        createdAt: "desc"
-      }
+        createdAt: "desc",
+      },
     });
 
-    res.status(200).json(bookings);
+    // ✅ enrich bookings for frontend
+    const enrichedBookings = bookings.map((b) => {
+      const paidAmount = b.payments.reduce(
+        (sum, p) => sum + Number(p.amount || 0),
+        0
+      );
 
+      const remainingBalance =
+        Number(b.totalAmount || 0) - paidAmount;
+
+      let paymentStatus = "pending";
+      if (remainingBalance <= 0) paymentStatus = "paid";
+      else if (paidAmount > 0) paymentStatus = "partial";
+
+      return {
+        ...b,
+        paidAmount,
+        remainingBalance,
+        paymentStatus,
+      };
+    });
+
+    res.status(200).json(enrichedBookings);
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: "Server error" });
@@ -208,24 +239,40 @@ export const getSingleBooking = async (req, res) => {
     const booking = await prisma.booking.findFirst({
       where: {
         id: Number(id),
-        userId: req.user.id
+        userId: req.user.id,
       },
       include: {
         client: true,
         hotel: true,
-        payments: true, // singular
+        payments: true,
         invoice: true,
         voucher: true,
-        receipt: true
-      }
+        receipts: true,
+      },
     });
 
     if (!booking) {
       return res.status(404).json({ message: "Booking not found" });
     }
 
-    res.status(200).json(booking);
+    const paidAmount = booking.payments.reduce(
+      (sum, p) => sum + Number(p.amount || 0),
+      0
+    );
 
+    const remainingBalance =
+      Number(booking.totalAmount || 0) - paidAmount;
+
+    let paymentStatus = "pending";
+    if (remainingBalance <= 0) paymentStatus = "paid";
+    else if (paidAmount > 0) paymentStatus = "partial";
+
+    res.status(200).json({
+      ...booking,
+      paidAmount,
+      remainingBalance,
+      paymentStatus,
+    });
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: "Server error" });
