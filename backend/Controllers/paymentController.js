@@ -7,30 +7,47 @@ const generateReceiptNumber = () => {
   return `RCPT-${timestamp}-${random}`;
 };
 
+// ===== SERVER PAYMENT VALIDATOR =====
+const validatePaymentServer = ({ bookingId, amount, method }) => {
+  if (!bookingId || !amount || !method) {
+    return "bookingId, amount, and method are required";
+  }
+
+  const amt = Number(amount);
+
+  if (isNaN(amt) || amt <= 0) {
+    return "Invalid payment amount";
+  }
+
+  if (!["BANK", "MPESA"].includes(method)) {
+    return "Invalid payment method";
+  }
+
+  return null;
+};
+
 export const createPayment = async (req, res) => {
   try {
     const { bookingId, amount, method, transactionId } = req.body;
 
-    // ✅ Basic validation
-    if (!bookingId || !amount || !method) {
+    // ✅ SINGLE SOURCE OF TRUTH VALIDATION
+    const validationError = validatePaymentServer({
+      bookingId,
+      amount,
+      method,
+    });
+
+    if (validationError) {
       return res.status(400).json({
         success: false,
-        message: "bookingId, amount, and method are required",
+        message: validationError,
       });
     }
 
     const bookingIdNum = Number(bookingId);
-    const paymentAmount = parseFloat(amount);
-
-    if (isNaN(paymentAmount) || paymentAmount <= 0) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid amount",
-      });
-    }
+    const paymentAmount = Number(amount);
 
     const result = await prisma.$transaction(async (tx) => {
-      // ✅ Get booking
       const booking = await tx.booking.findFirst({
         where: {
           id: bookingIdNum,
@@ -49,7 +66,6 @@ export const createPayment = async (req, res) => {
         throw err;
       }
 
-      // ✅ Calculate already paid
       const alreadyPaid = booking.payments.reduce(
         (sum, p) => sum + p.amount,
         0
@@ -57,7 +73,6 @@ export const createPayment = async (req, res) => {
 
       const remainingBalance = booking.totalAmount - alreadyPaid;
 
-      // ✅ Prevent overpayment (CLEAN ERROR)
       if (paymentAmount > remainingBalance) {
         const err = new Error("OVERPAYMENT");
         err.code = "OVERPAYMENT";
@@ -65,7 +80,6 @@ export const createPayment = async (req, res) => {
         throw err;
       }
 
-      // ✅ Create payment
       const payment = await tx.payment.create({
         data: {
           bookingId: bookingIdNum,
@@ -76,13 +90,11 @@ export const createPayment = async (req, res) => {
         },
       });
 
-      // ✅ Recalculate totals
       const newPaidTotal = alreadyPaid + paymentAmount;
 
       const newStatus =
         newPaidTotal >= booking.totalAmount ? "PAID" : "PENDING";
 
-      // ✅ Update booking
       await tx.booking.update({
         where: { id: bookingIdNum },
         data: {
@@ -91,7 +103,6 @@ export const createPayment = async (req, res) => {
         },
       });
 
-      // ✅ Create receipt
       const receipt = await tx.receipt.create({
         data: {
           bookingId: bookingIdNum,
@@ -107,37 +118,33 @@ export const createPayment = async (req, res) => {
       };
     });
 
-    // ✅ SUCCESS RESPONSE
     return res.status(201).json({
       success: true,
       message: "Payment recorded successfully",
       ...result,
     });
   } catch (error) {
-  // ✅ OVERPAYMENT — handled quietly
-  if (error.code === "OVERPAYMENT") {
-    return res.status(400).json({
+    if (error.code === "OVERPAYMENT") {
+      return res.status(400).json({
+        success: false,
+        type: "OVERPAYMENT",
+        message: `Payment exceeds remaining balance (${error.remainingBalance.toFixed(2)})`,
+        remainingBalance: error.remainingBalance,
+      });
+    }
+
+    if (error.code === "BOOKING_NOT_FOUND") {
+      return res.status(404).json({
+        success: false,
+        message: "Booking not found",
+      });
+    }
+
+    console.error("UNEXPECTED PAYMENT ERROR:", error);
+
+    return res.status(500).json({
       success: false,
-      type: "OVERPAYMENT",
-      message: `Payment exceeds remaining balance (${error.remainingBalance.toFixed(2)})`,
-      remainingBalance: error.remainingBalance,
+      message: "Payment failed. Please try again.",
     });
   }
-
-  // ✅ BOOKING NOT FOUND — handled quietly
-  if (error.code === "BOOKING_NOT_FOUND") {
-    return res.status(404).json({
-      success: false,
-      message: "Booking not found",
-    });
-  }
-
-  // 🚨 ONLY unexpected errors get logged
-  console.error("UNEXPECTED PAYMENT ERROR:", error);
-
-  return res.status(500).json({
-    success: false,
-    message: "Payment failed. Please try again.",
-  });
-}
 };

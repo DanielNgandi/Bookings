@@ -9,9 +9,11 @@ import {
   FaUniversity,
 } from "react-icons/fa";
 import safariBg from "../assets/safari-bg.png";
+import Swal from "sweetalert2";
 
 function AddHotel() {
   const navigate = useNavigate();
+
   const [formData, setFormData] = useState({
     name: "",
     location: "",
@@ -27,15 +29,87 @@ function AddHotel() {
     setFadeIn(true);
   }, []);
 
+  // ✅ validators (international friendly)
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  const phoneRegex = /^\+?[1-9]\d{7,14}$/; // E.164 format
+
+  // ✅ handle change (NO email validation here)
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
+  // ✅ validate on blur (BEST UX)
+  const handleBlur = (e) => {
+    const { name, value } = e.target;
+
+    if (name === "email" && value) {
+      if (!emailRegex.test(value)) {
+        Swal.fire({
+          icon: "warning",
+          title: "Invalid email",
+          text: "Please enter a valid email address",
+        });
+      }
+    }
+
+    if (name === "phone" && value) {
+      if (!phoneRegex.test(value)) {
+        Swal.fire({
+          icon: "warning",
+          title: "Invalid phone",
+          text: "Use international format e.g. +254712345678",
+        });
+      }
+    }
+  };
+
+  // ✅ final submit validation (safety net)
+  const validateBeforeSubmit = () => {
+    if (!formData.name) {
+      Swal.fire({
+        icon: "warning",
+        title: "Hotel name required",
+        text: "Please enter the hotel name.",
+      });
+      return false;
+    }
+
+    if (formData.email && !emailRegex.test(formData.email)) {
+      Swal.fire({
+        icon: "warning",
+        title: "Invalid email",
+        text: "Please enter a valid email address.",
+      });
+      return false;
+    }
+
+    if (formData.phone && !phoneRegex.test(formData.phone)) {
+      Swal.fire({
+        icon: "warning",
+        title: "Invalid phone number",
+        text: "Use international format e.g. +254712345678.",
+      });
+      return false;
+    }
+
+    return true;
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    if (!validateBeforeSubmit()) return;
+
     try {
       await API.post("/hotels", formData);
-      setMessage("Hotel added successfully ✅");
+
+      Swal.fire({
+        icon: "success",
+        title: "Hotel added",
+        text: "Hotel added successfully ✅",
+        confirmButtonColor: "#16a34a",
+      });
+
       setFormData({
         name: "",
         location: "",
@@ -43,10 +117,17 @@ function AddHotel() {
         phone: "",
         bankDetails: "",
       });
+
       setTimeout(() => navigate("/create-booking"), 1000);
     } catch (error) {
       console.error(error);
-      setMessage("Error adding hotel ❌");
+
+      Swal.fire({
+        icon: "error",
+        title: "Failed",
+        text: "Error adding hotel ❌",
+        confirmButtonColor: "#dc2626",
+      });
     }
   };
 
@@ -60,10 +141,7 @@ function AddHotel() {
 
   return (
     <div style={styles.page}>
-      {/* 🎬 Animated background */}
       <div style={styles.bgAnimation} />
-
-      {/* 🌑 Dark overlay */}
       <div style={styles.overlay} />
 
       <div
@@ -86,15 +164,16 @@ function AddHotel() {
                 placeholder={field.placeholder}
                 value={formData[field.name]}
                 onChange={handleChange}
+                onBlur={(e) => {
+                  handleBlur(e);
+                  e.target.parentNode.style.boxShadow =
+                    "0 0 6px rgba(255,255,255,0.2)";
+                }}
                 style={styles.input}
                 required={field.required}
                 onFocus={(e) =>
                   (e.target.parentNode.style.boxShadow =
                     "0 0 12px rgba(255,255,255,0.6)")
-                }
-                onBlur={(e) =>
-                  (e.target.parentNode.style.boxShadow =
-                    "0 0 6px rgba(255,255,255,0.2)")
                 }
               />
             </div>
@@ -117,7 +196,6 @@ function AddHotel() {
         </Link>
       </div>
 
-      {/* 🔥 Background animation keyframes */}
       <style>
         {`
           @keyframes safariMove {

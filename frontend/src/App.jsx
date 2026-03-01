@@ -6,7 +6,8 @@ import CreateBooking from "./pages/createBooking";
 import Register from "./components/Register";
 import Login from "./components/Login";
 import ViewBookings from "./pages/ViewBookings";
-
+import ForgotPassword from "./components/ForgotPassword";
+import ResetPassword from "./components/ResetPassword";
 
 function App() {
   return (
@@ -14,6 +15,8 @@ function App() {
       <Routes>
         <Route path="/register" element={<Register />} />
         <Route path="/login" element={<Login />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
         <Route path="/" element={<Home />} />
         <Route path="/add-client" element={<AddClient />} />
         <Route path="/add-hotel" element={<AddHotel />} />

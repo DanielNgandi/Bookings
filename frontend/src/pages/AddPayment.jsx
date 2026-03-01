@@ -2,6 +2,39 @@ import { useState, useEffect } from "react";
 import API from "../service/api.js";
 import Swal from "sweetalert2";
 
+const validatePaymentInput = ({
+  amount,
+  method,
+  transactionId,
+  remainingBalance,
+}) => {
+  const errors = {};
+  const payAmount = Number(amount);
+
+  // Amount validation
+  if (!amount || isNaN(payAmount)) {
+    errors.amount = "Enter a valid amount";
+  } else if (payAmount <= 0) {
+    errors.amount = "Amount must be greater than 0";
+  } else if (payAmount > remainingBalance) {
+    errors.amount = `Amount exceeds remaining balance (${remainingBalance.toFixed(
+      2
+    )})`;
+  }
+
+  // Method validation
+  if (!["BANK", "MPESA"].includes(method)) {
+    errors.method = "Invalid payment method";
+  }
+
+  // Optional transaction ID rules
+  if (transactionId && transactionId.length < 5) {
+    errors.transactionId = "Transaction ID too short";
+  }
+
+  return errors;
+};
+
 function AddPayment({ bookingId, totalAmount = 0, onPaymentSuccess }) {
   const [amount, setAmount] = useState("");
   const [method, setMethod] = useState("BANK");
@@ -12,12 +45,10 @@ function AddPayment({ bookingId, totalAmount = 0, onPaymentSuccess }) {
   const [receiptLink, setReceiptLink] = useState("");
   const [isPaidOff, setIsPaidOff] = useState(false);
 
-  // ✅ keep balance in sync with parent
   useEffect(() => {
     setRemainingBalance(Number(totalAmount) || 0);
   }, [totalAmount]);
 
-  // ✅ auto-fill amount when balance changes
   useEffect(() => {
     if (remainingBalance <= 0) {
       setIsPaidOff(true);
@@ -37,20 +68,20 @@ function AddPayment({ bookingId, totalAmount = 0, onPaymentSuccess }) {
       return;
     }
 
-    const payAmount = parseFloat(amount);
+    // ✅ run validator
+    const validationErrors = validatePaymentInput({
+      amount,
+      method,
+      transactionId,
+      remainingBalance,
+    });
 
-    // ✅ validation
-    if (isNaN(payAmount) || payAmount <= 0) {
-      setError("Please enter a valid payment amount.");
+    if (Object.keys(validationErrors).length > 0) {
+      setError(Object.values(validationErrors)[0]);
       return;
     }
 
-    if (payAmount > remainingBalance) {
-      setError(
-        `Amount exceeds remaining balance (${remainingBalance.toFixed(2)})`
-      );
-      return;
-    }
+    const payAmount = Number(amount); // ✅ FIXED BUG
 
     setLoading(true);
 
@@ -65,12 +96,13 @@ function AddPayment({ bookingId, totalAmount = 0, onPaymentSuccess }) {
       // ✅ update balance from backend safely
       const newBalance = Number(res.data.remainingBalance ?? 0);
       setRemainingBalance(newBalance);
+
       Swal.fire({
-  icon: "success",
-  title: "Payment recorded",
-  text: "Receipt generated successfully",
-  confirmButtonColor: "#16a34a",
-});
+        icon: "success",
+        title: "Payment recorded",
+        text: "Receipt generated successfully",
+        confirmButtonColor: "#16a34a",
+      });
 
       // ✅ receipt link (safe fallback)
       if (res.data.receipt?.id) {
@@ -81,33 +113,31 @@ function AddPayment({ bookingId, totalAmount = 0, onPaymentSuccess }) {
 
       onPaymentSuccess?.();
     } catch (err) {
-  const data = err.response?.data;
+      const data = err.response?.data;
 
-  // ⭐ OVERPAYMENT POPUP
-  if (data?.type === "OVERPAYMENT") {
-    Swal.fire({
-      icon: "warning",
-      title: "Overpayment detected",
-      text: data.message,
-      confirmButtonColor: "#dc2626",
-    });
+      // ⭐ OVERPAYMENT POPUP
+      if (data?.type === "OVERPAYMENT") {
+        Swal.fire({
+          icon: "warning",
+          title: "Overpayment detected",
+          text: data.message,
+          confirmButtonColor: "#dc2626",
+        });
 
-    // sync remaining balance from backend
-    if (typeof data.remainingBalance === "number") {
-      setRemainingBalance(data.remainingBalance);
-    }
+        if (typeof data.remainingBalance === "number") {
+          setRemainingBalance(data.remainingBalance);
+        }
 
-    return;
-  }
+        return;
+      }
 
-  // ⭐ other errors
-  Swal.fire({
-    icon: "error",
-    title: "Payment Failed",
-    text: data?.message || "Something went wrong",
-    confirmButtonColor: "#dc2626",
-  });
-
+      // ⭐ other errors
+      Swal.fire({
+        icon: "error",
+        title: "Payment Failed",
+        text: data?.message || "Something went wrong",
+        confirmButtonColor: "#dc2626",
+      });
     } finally {
       setLoading(false);
     }

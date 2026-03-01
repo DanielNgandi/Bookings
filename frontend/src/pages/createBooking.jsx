@@ -3,6 +3,7 @@ import API from "../service/api.js";
 import { Link, useNavigate } from "react-router-dom";
 import { FaUser, FaHotel, FaCalendarAlt } from "react-icons/fa";
 import safariBg from "../assets/safari-bg.png";
+import Swal from "sweetalert2";
 
 function AddBooking() {
   const navigate = useNavigate();
@@ -35,6 +36,11 @@ function AddBooking() {
       setClients(res.data);
     } catch (err) {
       console.error(err);
+      Swal.fire({
+        icon: "error",
+        title: "Failed to load clients",
+        text: "Please refresh the page.",
+      });
     }
   };
 
@@ -44,6 +50,11 @@ function AddBooking() {
       setHotels(res.data);
     } catch (err) {
       console.error(err);
+      Swal.fire({
+        icon: "error",
+        title: "Failed to load hotels",
+        text: "Please refresh the page.",
+      });
     }
   };
 
@@ -72,7 +83,10 @@ function AddBooking() {
         service: "Adults Safari",
         pax: Number(formData.adults),
         costPP: Number(formData.costAdults),
-        amount: Number(formData.adults) * Number(formData.costAdults) * days,
+        amount:
+          Number(formData.adults) *
+          Number(formData.costAdults) *
+          days,
       });
     }
 
@@ -82,7 +96,10 @@ function AddBooking() {
         service: "Kids Safari",
         pax: Number(formData.kids),
         costPP: Number(formData.costKids),
-        amount: Number(formData.kids) * Number(formData.costKids) * days,
+        amount:
+          Number(formData.kids) *
+          Number(formData.costKids) *
+          days,
       });
     }
 
@@ -97,10 +114,35 @@ function AddBooking() {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    try {
-      const items = generateItems();
-      if (!items.length) return setMessage("Please select valid dates");
+    const items = generateItems();
+    const nights = getNumberOfDays();
 
+    // ✅ FRONTEND VALIDATION
+    if (!formData.clientId || !formData.hotelId) {
+      return Swal.fire({
+        icon: "warning",
+        title: "Missing selection",
+        text: "Please select client and hotel.",
+      });
+    }
+
+    if (!nights) {
+      return Swal.fire({
+        icon: "warning",
+        title: "Invalid dates",
+        text: "Check-out must be after check-in.",
+      });
+    }
+
+    if (!items.length) {
+      return Swal.fire({
+        icon: "warning",
+        title: "No passengers",
+        text: "Enter adults or kids greater than zero.",
+      });
+    }
+
+    try {
       await API.post("/bookings", {
         clientId: formData.clientId,
         hotelId: formData.hotelId,
@@ -109,11 +151,26 @@ function AddBooking() {
         items,
       });
 
-      setMessage("Booking created & invoice generated ✅");
-      setTimeout(() => navigate("/bookings"), 1200);
+      // ✅ SUCCESS ALERT
+      await Swal.fire({
+        icon: "success",
+        title: "Booking created",
+        text: "Invoice generated successfully",
+        confirmButtonColor: "#16a34a",
+      });
+
+      setTimeout(() => navigate("/bookings"), 800);
     } catch (error) {
       console.error(error);
-      setMessage(error.response?.data?.message || "Error creating booking ❌");
+
+      Swal.fire({
+        icon: "error",
+        title: "Booking failed",
+        text:
+          error.response?.data?.message ||
+          "Error creating booking",
+        confirmButtonColor: "#dc2626",
+      });
     }
   };
 
@@ -141,6 +198,7 @@ function AddBooking() {
           <div style={styles.inputGroup}>
             <FaUser />
             <select
+              className="glass-select"
               name="clientId"
               value={formData.clientId}
               onChange={handleChange}
@@ -159,6 +217,7 @@ function AddBooking() {
           <div style={styles.inputGroup}>
             <FaHotel />
             <select
+              className="glass-select"
               name="hotelId"
               value={formData.hotelId}
               onChange={handleChange}
@@ -198,7 +257,6 @@ function AddBooking() {
             />
           </div>
 
-          {/* 🔹 Number inputs with visible placeholders */}
           <div style={styles.inputGroup}>
             <input
               type="number"
@@ -247,34 +305,52 @@ function AddBooking() {
           </button>
         </form>
 
-        {message && <p style={styles.message}>{message}</p>}
-
         <Link to="/" style={styles.link}>
           ← Back to Home
         </Link>
       </div>
 
-      <style>
-        {`
-          @keyframes safariMove {
-            0% { transform: scale(1.1) translateX(0px); }
-            50% { transform: scale(1.15) translateX(-25px); }
-            100% { transform: scale(1.1) translateX(0px); }
-          }
+      {/* 🔥 your existing CSS untouched */}
+      <style>{`
+        @keyframes safariMove {
+          0% { transform: scale(1.1) translateX(0px); }
+          50% { transform: scale(1.15) translateX(-25px); }
+          100% { transform: scale(1.1) translateX(0px); }
+        }
 
-          /* Placeholder color */
-          input::placeholder {
-            color: #000; /* black placeholder */
-            opacity: 1;
-          }
-        `}
-      </style>
+        input::placeholder {
+          color: #000;
+          opacity: 1;
+        }
+
+        .glass-select {
+          cursor: pointer;
+          color: #c9bdbd;
+          background-color: rgba(255,255,255,0.18);
+          background-image: url("data:image/svg+xml;utf8,<svg fill='white' height='20' viewBox='0 0 24 24' width='20' xmlns='http://www.w3.org/2000/svg'><path d='M7 10l5 5 5-5z'/></svg>");
+          background-repeat: no-repeat;
+          background-position: right 12px center;
+          background-size: 18px;
+          padding-right: 40px;
+        }
+
+        .glass-select option {
+          color: #000 !important;
+          background-color: #c9bdbd !important;
+        }
+
+        input:focus,
+        .glass-select:focus {
+          outline: none;
+          border: 1px solid #42a5f5;
+          box-shadow: 0 0 0 2px rgba(66,165,245,0.35);
+        }
+      `}</style>
     </div>
   );
 }
 
 export default AddBooking;
-
 const styles = {
   page: {
     position: "relative",
@@ -326,18 +402,23 @@ const styles = {
 
   form: { display: "flex", flexDirection: "column", gap: "15px" },
 
-  inputGroup: { display: "flex", gap: "10px", flexWrap: "wrap" },
+  inputGroup: { display: "flex", gap: "10px", flexWrap: "wrap", },
 
   input: {
-    flex: 1,
-    border: "none",
-    outline: "none",
-    background: "rgba(255,255,255,0.18)",
-    borderRadius: "8px",
-    padding: "8px 10px",
-    color: "#fff",
-  },
-
+  flex: 1,
+  border: "1px solid rgba(255,255,255,0.25)",
+  outline: "none",
+  background: "rgba(255,255,255,0.18)",
+  borderRadius: "10px",
+  padding: "12px 14px",
+  color: "#fff",
+  fontSize: "14px",
+  transition: "all 0.25s ease",
+  appearance: "none",
+  WebkitAppearance: "none",
+  MozAppearance: "none",
+},
+  
   summary: {
     background: "rgba(0,0,0,0.35)",
     padding: "12px",

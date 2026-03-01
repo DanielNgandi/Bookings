@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import API from "../service/api.js";
+import bgImage from "../assets/safari-bg.png"; 
 
 function Login() {
   const navigate = useNavigate();
@@ -26,7 +27,6 @@ function Login() {
       setLoading(true);
       const res = await API.post("/auth/login", formData);
 
-      // ✅ SAME TOKEN STRATEGY AS REGISTER
       const userData = {
         ...res.data.user,
         token: res.data.token,
@@ -45,8 +45,11 @@ function Login() {
 
   return (
     <div style={styles.container}>
+      {/* 🌑 overlay */}
+      <div style={styles.overlay}></div>
+
       <form onSubmit={handleSubmit} style={styles.card}>
-        <h2 style={styles.title}>Login</h2>
+        <h2 style={styles.title}>Welcome Back</h2>
 
         <input
           type="email"
@@ -77,6 +80,11 @@ function Login() {
         <p style={styles.linkText}>
           Don't have an account? <Link to="/register">Register here</Link>
         </p>
+        <p style={{ textAlign: "right" }}>
+  <Link to="/forgot-password" style={{ color: "#fff" }}>
+    Forgot password?
+  </Link>
+</p>
       </form>
     </div>
   );
@@ -88,32 +96,54 @@ const styles = {
     display: "flex",
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "#f4f6f9",
+    backgroundImage: `url(${bgImage})`,
+    backgroundSize: "cover",
+    backgroundPosition: "center",
+    backgroundRepeat: "no-repeat",
+    position: "relative",
     padding: "20px",
   },
+
+  overlay: {
+    position: "absolute",
+    width: "100%",
+    height: "100%",
+    backgroundColor: "rgba(0,0,0,0.45)",
+    top: 0,
+    left: 0,
+  },
+
   card: {
+    position: "relative",
     width: "100%",
     maxWidth: "400px",
-    padding: "30px",
-    borderRadius: "10px",
-    backgroundColor: "#fff",
-    boxShadow: "0 4px 15px rgba(0,0,0,0.1)",
+    padding: "35px",
+    borderRadius: "16px",
+    background: "rgba(255,255,255,0.15)",
+    backdropFilter: "blur(12px)",
+    WebkitBackdropFilter: "blur(12px)",
+    boxShadow: "0 8px 32px rgba(0,0,0,0.3)",
     display: "flex",
     flexDirection: "column",
     gap: "15px",
+    color: "#fff",
+    zIndex: 2,
   },
+
   title: {
     textAlign: "center",
-    fontSize: "1.5rem",
-    color: "#43a047",
-    marginBottom: "20px",
+    fontSize: "1.8rem",
+    fontWeight: "bold",
   },
+
   input: {
     padding: "12px",
     borderRadius: "8px",
-    border: "1px solid #ccc",
+    border: "none",
     fontSize: "1rem",
+    outline: "none",
   },
+
   button: {
     padding: "12px",
     borderRadius: "8px",
@@ -124,15 +154,16 @@ const styles = {
     fontWeight: "bold",
     cursor: "pointer",
   },
+
   message: {
     textAlign: "center",
-    color: "green",
+    color: "#fff",
     fontWeight: "bold",
   },
+
   linkText: {
     textAlign: "center",
     fontSize: "0.9rem",
-    color: "#555",
   },
 };
 
